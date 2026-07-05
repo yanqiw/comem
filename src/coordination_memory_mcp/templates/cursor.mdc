@@ -1,0 +1,16 @@
+---
+description: Coordination Memory MCP protocol
+alwaysApply: true
+---
+
+Follow the Coordination Memory protocol in `AGENTS.md` (the section between the
+`coordination-memory` markers).
+
+- `completed_gate_passed` is not accepted truth — only an integrator
+  `accept_event` makes work accepted.
+- Claim assignments before working; carry the current `base_revision` on
+  mutating calls.
+- Orient with `get_team_board` / `get_assignment_detail` before acting.
+- For loop-dispatched work, read `metadata.context_refs`, obey `allowed_paths`
+  and `acceptance_criteria`, and keep run communication metadata current with
+  `record_run_binding`.

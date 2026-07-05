@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "coordination-memory": {
+      "command": "comem",
+      "args": ["serve"],
+      "env": {
+        "COORDINATION_MEMORY_DB": "/absolute/path/coordination.sqlite3"
+      }
+    }
+  }
+}
