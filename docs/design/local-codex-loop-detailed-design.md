@@ -23,6 +23,62 @@ future cloud control plane plus local connector. The transport can change later;
 the assignment contract, run binding, command envelope, and prompt envelope
 should not.
 
+## Codex Conversation Interaction
+
+When Codex creates a Coordination Memory workspace, team, and assignments from a
+plan, it should ask the user to choose an execution mode before starting work:
+
+```text
+已创建 <N> 个 comem tasks。请选择执行模式：
+
+A. Codex subagent 模式（默认）
+当前 Codex 作为 Integrator，启动 Codex subagents 执行任务；comem 记录
+task/run/handoff/review，并在 dashboard 展示看板。
+
+B. comem loop 模式
+Codex 自动执行 comem loop；由 loop claim task 并启动 worker conversation。
+```
+
+The default mode is `codex_subagent`, because it preserves the fastest Codex
+user experience. In this mode, claim metadata records the parent Codex thread
+and subagent name when available:
+
+```json
+{
+  "session_kind": "codex_subagent",
+  "session_ref": "<parent-codex-thread-id>",
+  "metadata": {
+    "execution_mode": "codex_subagent",
+    "parent_thread_id": "<parent-codex-thread-id>",
+    "subagent_name": "<codex-worker-nickname>",
+    "managed_by": "codex_goal"
+  }
+}
+```
+
+The explicit loop mode is `comem_loop`. Codex should start with a dry-run using
+the same database as the MCP server and dashboard:
+
+```bash
+COORDINATION_MEMORY_DB=<stable-db-path> \
+comem loop --workspace <workspace_id> --team <team_id> --adapter <adapter> --dry-run --once
+```
+
+If the dry-run selects the expected tasks, Codex may start one pass or a polling
+loop:
+
+```bash
+COORDINATION_MEMORY_DB=<stable-db-path> \
+comem loop --workspace <workspace_id> --team <team_id> --adapter <adapter> --once
+
+COORDINATION_MEMORY_DB=<stable-db-path> \
+comem loop --workspace <workspace_id> --team <team_id> --adapter <adapter> --poll-interval 30
+```
+
+Use `fake` for deterministic local validation and `codex-app-server` only when
+the local Codex app-server bridge is available. Run at most one active loop per
+team/database unless the Integrator deliberately shards work.
+
 ## Goals
 
 - Run a local `comem loop` process against the existing SQLite-backed
@@ -48,9 +104,10 @@ should not.
 - Do not auto-accept worker handoffs.
 - Do not store full plans, design documents, secrets, auth tokens, or
   credential-bearing logs in Coordination Memory.
-- Do not make Codex subagents the system-level scheduling primitive. A Codex
-  worker thread may use subagents internally, but the ledger tracks the worker
-  thread.
+- Do not force all work through `comem loop`. Codex subagent mode is the default
+  interaction path; loop mode is an explicit scheduling path.
+- Do not pretend Codex subagents are independently addressable first-class
+  Codex threads when only the parent thread and subagent nickname are known.
 
 ## Architecture
 

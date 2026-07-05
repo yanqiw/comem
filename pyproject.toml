@@ -1,6 +1,6 @@
 [project]
 name = "coordination-memory-mcp"
-version = "0.2.4"
+version = "0.2.5"
 description = "Local MCP server for append-only multi-agent coordination memory with an integrator-owned accepted projection and goal-level acceptance contracts."
 readme = "README.md"
 requires-python = ">=3.11"

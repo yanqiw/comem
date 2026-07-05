@@ -32,6 +32,26 @@ your own work as done.
    `reject_event`.
 7. Read models: `get_team_board`, `get_assignment_detail`, `get_run_detail`.
 
+### Execution mode selection
+
+After a Codex Integrator creates a workspace, team, and assignments, ask the
+user to choose one execution mode before starting work:
+
+- `codex_subagent` (default) — the current Codex conversation remains the
+  Integrator, starts Codex subagents as workers, and records claims,
+  heartbeats, handoffs, and reviews in Coordination Memory.
+- `comem_loop` — Codex starts `comem loop` with the selected workspace/team and
+  the loop owns worker claims and thread starts.
+
+For `codex_subagent`, claim runs with `session_kind="codex_subagent"` and
+`session_ref` set to the parent Codex thread id when available. Record the
+subagent nickname/name in run metadata or an observed event when Codex exposes
+it. This mode is dashboard-visible through the parent conversation; do not
+pretend the subagent is an independently addressable first-class thread.
+
+For `comem_loop`, use loop-managed `metadata.session_bind` and let the loop
+claim assignments. Start with a dry-run before launching a polling loop.
+
 ### Local loop and task contract
 
 When a local scheduler such as `comem loop` starts or nudges an agent, the

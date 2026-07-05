@@ -28,7 +28,26 @@ This avoids context forks: Git remains the durable record for project thinking,
 and Coordination Memory remains the live state machine for who is doing what and
 what has been accepted.
 
-## Target scheduling model
+## Product Interaction Model
+
+After a Codex Integrator creates a workspace, team, and assignments, the user
+chooses one execution mode in the Codex conversation:
+
+1. `codex_subagent` mode: the current Codex conversation remains the
+   Integrator, uses Codex goal/subagent behavior to execute work, and records
+   claims, heartbeats, handoffs, and reviews in Coordination Memory. Claim/run
+   metadata should record the parent Codex thread and the worker subagent name
+   when known. This is the default because it is fast and keeps the user in the
+   Codex conversation.
+2. `comem_loop` mode: Codex starts `comem loop` with the selected
+   workspace/team/adapter parameters. The loop owns claims and starts or
+   resumes first-class worker conversations. Use this mode when workers must be
+   independently resumable, nudgeable, or cloud-connector-ready.
+
+Coordination Memory is the ledger in both modes. The difference is who owns
+scheduling: Codex goal/subagent orchestration or `comem loop`.
+
+## Target Scheduling Model
 
 The target architecture is an external Coordination Memory loop that schedules
 first-class Codex agent conversations.
@@ -49,17 +68,18 @@ Codex Worker threads
   execute assignments and report lifecycle events through Coordination Memory
 ```
 
-Codex subagents are not the system-level scheduling primitive. A worker Codex
-thread may choose to use Codex subagents internally while executing one
-assignment, but the Coordination Memory loop only tracks the worker thread's
-assignment lifecycle.
+Codex subagents are a valid execution mode, but they are parent-thread-managed.
+When the user chooses `codex_subagent`, Coordination Memory records the parent
+thread and subagent name instead of pretending the subagent is an independently
+addressable conversation. When the user chooses `comem_loop`, Codex subagents
+are not the system-level scheduling primitive; the loop tracks first-class
+worker conversations.
 
 ## Agent binding contract
 
-The loop must be able to find, resume, and message the agent that claimed an
-assignment. The assignment carries the intended session target before work is
-claimed; the run created by `claim_assignment` carries the actual live
-conversation binding.
+The binding contract depends on the selected execution mode. The assignment
+carries the intended execution mode before work is claimed; the run created by
+`claim_assignment` carries the actual live binding.
 
 Use three distinct layers:
 
@@ -67,21 +87,46 @@ Use three distinct layers:
   `actor_id`, `actor_kind`, provider, status, display name, and capabilities.
 - Assignment contract: durable task intent, including the objective,
   `context_refs`, allowed paths, acceptance criteria, any requested
-  capabilities or preferred provider, and `metadata.session_bind` for the
-  intended target actor.
+  capabilities or preferred provider, `metadata.execution_mode`, and
+  `metadata.session_bind` for the intended target actor.
 - Run binding: one execution attempt for one assignment, including the current
-  owner and the communication handle needed by the loop.
+  owner and the communication handle needed by Codex or the loop.
+
+The minimum assignment-level binding for Codex subagent mode is:
+
+```yaml
+execution_mode: codex_subagent
+session_bind:
+  target_actor_id: codex-worker-7
+  status: pending
+  session_kind: codex_subagent
+```
+
+The minimum run binding for Codex subagent mode is:
+
+```yaml
+run_binding:
+  run_id: run_123
+  assignment_id: task_abc
+  actor_id: codex-worker-7
+  session_kind: codex_subagent
+  session_ref: "<parent-codex-thread-id>"
+  parent_thread_id: "<parent-codex-thread-id>"
+  subagent_name: "Boyle"
+  managed_by: codex_goal
+```
 
 The minimum assignment-level binding for loop-managed Codex work is:
 
 ```yaml
+execution_mode: comem_loop
 session_bind:
   target_actor_id: codex-worker-7
   status: pending
   session_kind: codex_thread
 ```
 
-The minimum run binding for Codex should include:
+The minimum run binding for loop-managed Codex should include:
 
 ```yaml
 run_binding:

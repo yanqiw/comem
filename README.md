@@ -172,16 +172,32 @@ conversations. The initial release supports `--adapter fake` for deterministic
 testing and a guarded `--adapter codex-app-server` capability probe for future
 local Codex app-server integration.
 
+When Codex creates a workspace, team, and assignments for a plan, ask the user
+to choose one execution mode before starting work:
+
+- `codex_subagent` (default): the current Codex conversation remains the
+  Integrator, starts Codex subagents as workers, and records claims,
+  heartbeats, handoffs, and reviews in Coordination Memory.
+- `comem_loop`: Codex starts `comem loop` with the selected workspace/team and
+  the loop owns worker claims and thread starts.
+
+Use `codex_subagent` for the smoothest Codex experience. Use `comem_loop` when
+worker conversations must be independently resumable or scheduler-owned.
+
 Dry-run scheduling:
 
 ```bash
-comem loop --team default --adapter fake --dry-run --once
+COORDINATION_MEMORY_DB=/absolute/path/coordination.sqlite3 \
+  comem loop --workspace <workspace_id> --team <team_id> --adapter fake --dry-run --once
 ```
 
 Fake local dispatch:
 
 ```bash
-comem loop --team default --adapter fake --once
+COORDINATION_MEMORY_DB=/absolute/path/coordination.sqlite3 \
+  comem loop --workspace <workspace_id> --team <team_id> --adapter fake --once
+COORDINATION_MEMORY_DB=/absolute/path/coordination.sqlite3 \
+  comem loop --workspace <workspace_id> --team <team_id> --adapter fake --poll-interval 30
 ```
 
 Loop-managed assignments should carry `metadata.session_bind.target_actor_id`
