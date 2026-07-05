@@ -10,5 +10,6 @@ This repository uses the coordination-memory MCP server. Follow the
   calls.
 - Orient with `get_team_board` / `get_assignment_detail` before acting.
 - For loop-dispatched work, read `metadata.context_refs`, obey `allowed_paths`
-  and `acceptance_criteria`, and keep run communication metadata current with
-  `record_run_binding`.
+  and `acceptance_criteria`, use `metadata.session_bind.target_actor_id` as the
+  intended worker binding before any run exists, and keep run communication
+  metadata current with `record_run_binding`.

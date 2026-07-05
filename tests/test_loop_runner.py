@@ -53,6 +53,32 @@ def test_loop_dry_run_selects_ready_assignment_without_mutating(tmp_path: Path) 
     assert detail["assignment"]["status"] == "ready"
 
 
+def test_loop_uses_assignment_session_bind_target_actor(tmp_path: Path) -> None:
+    memory = open_memory(tmp_path)
+    memory.create_assignment(
+        assignment_id="loop-bound-actor",
+        title="Loop bound actor",
+        actor_id="integrator",
+        actor_role="integrator",
+        base_revision=0,
+        metadata={
+            "session_bind": {
+                "target_actor_id": "codex-bound-worker",
+                "status": "pending",
+                "session_kind": "codex_thread",
+            },
+        },
+    )
+
+    result = LoopRunner(
+        memory=memory,
+        config=LoopConfig(team_id="default", adapter="fake", dry_run=True, once=True),
+        adapter=FakeCodexAdapter(),
+    ).run_once()
+
+    assert result.commands[0].target_actor_id == "codex-bound-worker"
+
+
 def test_loop_skips_scheduling_when_adapter_capability_probe_fails(tmp_path: Path) -> None:
     memory = open_memory(tmp_path)
     assignment = memory.create_assignment(

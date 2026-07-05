@@ -1,0 +1,21 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.yanqiw/comem",
+  "title": "Coordination Memory",
+  "description": "Local MCP coordination layer for multi-agent coding with task leases, auditable handoffs, independent acceptance contracts, and an integrator-owned accepted ledger.",
+  "repository": {
+    "url": "https://github.com/yanqiw/comem",
+    "source": "github"
+  },
+  "version": "0.2.4",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "coordination-memory-mcp",
+      "version": "0.2.4",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

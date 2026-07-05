@@ -283,6 +283,10 @@ metadata:
     - codex_thread
     - repository_edit
   preferred_provider: codex
+  session_bind:
+    target_actor_id: codex-worker-7
+    status: pending
+    session_kind: codex_thread
   execution:
     key_files:
       - src/coordination_memory_mcp/cli.py
@@ -291,8 +295,9 @@ metadata:
       - Do not store Codex auth tokens in the ledger.
 ```
 
-The assignment contract is durable intent. It should not store runtime thread
-ids or adapter cursors.
+The assignment contract is durable intent. `session_bind` names the intended
+worker target before any run exists; it should not store runtime thread ids or
+adapter cursors.
 
 ### Actor Profile
 
@@ -550,12 +555,16 @@ The current model already supports most of the design:
 
 Small additions needed:
 
-1. Add a way to update run binding metadata and append a corresponding event.
-2. Expose run metadata updates through MCP only for the run owner or an
+1. Normalize loop-managed assignment metadata so `metadata.session_bind` is
+   present when the integrator provides a target actor hint.
+2. Make the loop choose `metadata.session_bind.target_actor_id` before falling
+   back to generated worker ids.
+3. Add a way to update run binding metadata and append a corresponding event.
+4. Expose run metadata updates through MCP only for the run owner or an
    integrator.
-3. Add event types for loop command dispatch, command completion, adapter
+5. Add event types for loop command dispatch, command completion, adapter
    availability, and review nudge dispatch.
-4. Add `comem loop` CLI configuration and adapter capability probing.
+6. Add `comem loop` CLI configuration and adapter capability probing.
 
 ## Testing Strategy
 
@@ -576,6 +585,8 @@ Adapter tests:
 
 Store tests:
 
+- `create_assignment` derives `metadata.session_bind` from legacy
+  `assigned_actor_hint` and preserves explicit session bindings.
 - `record_run_binding` updates only run metadata and appends an observed event.
 - Metadata survives `get_run_detail`.
 - Secret-like payloads are rejected or redacted according to existing policy.
@@ -591,6 +602,8 @@ Integration smoke tests:
 ## Acceptance Criteria
 
 - `comem loop --dry-run` prints eligible commands without mutating assignments.
+- Dry-run command selection uses `metadata.session_bind.target_actor_id` when
+  present.
 - A fake adapter end-to-end test starts a worker run and reaches
   `awaiting_review`.
 - Run detail shows `session_kind=codex_thread`, `session_ref`, and adapter

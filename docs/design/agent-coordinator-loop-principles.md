@@ -57,18 +57,29 @@ assignment lifecycle.
 ## Agent binding contract
 
 The loop must be able to find, resume, and message the agent that claimed an
-assignment. That binding should live on the run created by `claim_assignment`,
-not in the assignment's durable task contract.
+assignment. The assignment carries the intended session target before work is
+claimed; the run created by `claim_assignment` carries the actual live
+conversation binding.
 
 Use three distinct layers:
 
 - Actor profile: long-lived identity and capability information, such as
   `actor_id`, `actor_kind`, provider, status, display name, and capabilities.
 - Assignment contract: durable task intent, including the objective,
-  `context_refs`, allowed paths, acceptance criteria, and any requested
-  capabilities or preferred provider.
+  `context_refs`, allowed paths, acceptance criteria, any requested
+  capabilities or preferred provider, and `metadata.session_bind` for the
+  intended target actor.
 - Run binding: one execution attempt for one assignment, including the current
   owner and the communication handle needed by the loop.
+
+The minimum assignment-level binding for loop-managed Codex work is:
+
+```yaml
+session_bind:
+  target_actor_id: codex-worker-7
+  status: pending
+  session_kind: codex_thread
+```
 
 The minimum run binding for Codex should include:
 

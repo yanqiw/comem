@@ -465,7 +465,8 @@ class CoordinationMemory:
         if base_revision != 0:
             raise StaleRevisionError("new assignments must use base_revision=0")
         now = self._now()
-        metadata_json = self._json(metadata or {})
+        normalized_metadata = self._normalize_assignment_metadata(metadata)
+        metadata_json = self._json(normalized_metadata)
         with self._connect() as conn:
             exists = conn.execute(
                 "select 1 from assignments where assignment_id = ?",
@@ -510,7 +511,7 @@ class CoordinationMemory:
                 actor_role=actor_role,
                 payload={
                     "title": title,
-                    "metadata": metadata or {},
+                    "metadata": normalized_metadata,
                 },
                 reviewed_event_id=None,
                 assignment_revision=1,
@@ -3315,6 +3316,35 @@ class CoordinationMemory:
             else:
                 merged[key] = value
         return merged
+
+    def _normalize_assignment_metadata(
+        self,
+        metadata: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        normalized = dict(metadata or {})
+        session_bind = normalized.get("session_bind")
+        if session_bind is not None and not isinstance(session_bind, dict):
+            raise ValidationError("metadata.session_bind must be a JSON object")
+
+        bind = dict(session_bind or {})
+        actor_hint = normalized.get("assigned_actor_hint")
+        if not isinstance(actor_hint, str):
+            actor_hint = None
+        actor_hint = actor_hint.strip() if actor_hint else None
+
+        if session_bind is None and actor_hint:
+            bind["target_actor_id"] = actor_hint
+            bind["status"] = "pending"
+            bind["session_kind"] = "codex_thread"
+        elif session_bind is not None:
+            if "target_actor_id" not in bind and actor_hint:
+                bind["target_actor_id"] = actor_hint
+            bind.setdefault("status", "pending")
+            bind.setdefault("session_kind", "codex_thread")
+
+        if bind:
+            normalized["session_bind"] = bind
+        return normalized
 
     def _json(self, value: Any) -> str:
         return json.dumps(value, ensure_ascii=False, sort_keys=True)

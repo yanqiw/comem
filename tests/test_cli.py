@@ -153,8 +153,13 @@ def test_agents_md_documents_protocol(tmp_path) -> None:
         "base_revision",
         "acceptance contract",
         "context_refs",
+        "session_bind",
         "record_run_binding",
         "session_kind",
+        "coordination_memory_db",
+        "dry-run",
+        "one active loop",
+        "codex-app-server",
     ):
         assert token in text, f"AGENTS.md missing protocol token: {token!r}"
 

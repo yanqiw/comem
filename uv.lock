@@ -188,7 +188,7 @@ wheels = [
 
 [[package]]
 name = "coordination-memory-mcp"
-version = "0.2.2"
+version = "0.2.4"
 source = { editable = "." }
 dependencies = [
     { name = "mcp" },

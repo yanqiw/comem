@@ -95,7 +95,7 @@ class LoopRunner:
         return ["default"]
 
     def _start_command(self, assignment: dict) -> LoopCommand:
-        actor_id = f"{self.config.actor_prefix}-{assignment['assignment_id']}"
+        actor_id = self._target_actor_id(assignment)
         command_id = build_command_id(
             command_type="start_assignment",
             assignment_id=assignment["assignment_id"],
@@ -115,6 +115,20 @@ class LoopRunner:
             prompt_kind="worker_assignment",
             payload={"assignment": assignment},
         )
+
+    def _target_actor_id(self, assignment: dict) -> str:
+        metadata = assignment.get("metadata") or {}
+        session_bind = metadata.get("session_bind")
+        if isinstance(session_bind, dict):
+            target_actor_id = session_bind.get("target_actor_id")
+            if isinstance(target_actor_id, str) and target_actor_id.strip():
+                return target_actor_id.strip()
+
+        actor_hint = metadata.get("assigned_actor_hint")
+        if isinstance(actor_hint, str) and actor_hint.strip():
+            return actor_hint.strip()
+
+        return f"{self.config.actor_prefix}-{assignment['assignment_id']}"
 
     def _review_commands(self) -> list[LoopCommand]:
         pending = self.memory.list_pending_reviews()

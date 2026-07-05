@@ -7,6 +7,8 @@ release `vMAJOR.MINOR.PATCH`, which triggers the build-and-publish workflow.
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-07-06
+
 ### Added
 - `cancel_assignment` and `supersede_assignment` MCP tools (integrator-only):
   give an assignment a clean terminal exit besides accept/reject. Both release

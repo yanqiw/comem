@@ -39,6 +39,22 @@ assignment is the contract. Treat `title`, `allowed_paths`,
 `acceptance_criteria`, `metadata.context_refs`, and the current `revision` as
 the authoritative task boundary.
 
+Loop-managed assignments should also include `metadata.session_bind` so the
+loop has a stable target before any run exists:
+
+```json
+{
+  "session_bind": {
+    "target_actor_id": "<intended-worker-actor-id>",
+    "status": "pending",
+    "session_kind": "codex_thread"
+  }
+}
+```
+
+`assigned_actor_hint` is a compatibility shortcut; new task contracts should
+prefer `metadata.session_bind.target_actor_id`.
+
 Durable memory and long context live in repository Markdown files, not in MCP
 payloads. Assignments should point to design docs, plans, runbooks, or evidence
 through `metadata.context_refs`; agents must read those files before changing
@@ -46,8 +62,8 @@ code. Do not paste large docs, `.env` contents, credentials, or secret-bearing
 logs into Coordination Memory.
 
 For Codex-style first-class agent conversations, claims and run bindings should
-make the agent reachable by the loop and by humans. Prefer claim metadata such
-as:
+turn that intended binding into the actual reachable conversation for the loop
+and humans. Prefer claim metadata such as:
 
 ```json
 {
@@ -64,6 +80,35 @@ Use `record_run_binding` for adapter kind, command id, client message id, and
 last seen turn/cursor updates. The loop may start workers and nudge
 integrators, but it never accepts work; acceptance still requires an integrator
 review decision.
+
+### Starting a local loop from Codex
+
+A Codex Integrator conversation may start `comem loop` from its terminal. Do
+this only as an operator action, not from inside a worker that is currently
+claiming an assignment.
+
+Before starting the loop, set `COORDINATION_MEMORY_DB` to the same stable
+absolute SQLite path used by the MCP server and dashboard. Do not rely on the
+default DB path, because that can create a separate per-worktree memory.
+
+Start with a dry-run:
+
+```bash
+comem loop --workspace <workspace_id> --team <team_id> --adapter fake --dry-run --once
+```
+
+Then run one pass or one long-running loop:
+
+```bash
+comem loop --workspace <workspace_id> --team <team_id> --adapter fake --once
+comem loop --workspace <workspace_id> --team <team_id> --adapter fake --poll-interval 30
+```
+
+Run at most one active loop per team and DB unless the Integrator deliberately
+shards work. `fake` is the safe local adapter for deterministic validation.
+`codex-app-server` is a guarded capability probe/skeleton; use it only when a
+local Codex app-server endpoint is explicitly available, and do not claim it
+started real Codex conversations otherwise.
 
 ### Optimistic concurrency
 

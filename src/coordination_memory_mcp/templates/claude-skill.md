@@ -17,4 +17,6 @@ Key rules:
 - Orient with `get_team_board` / `get_assignment_detail` before acting.
 - For loop-dispatched work, treat the assignment as the task contract: read
   `metadata.context_refs`, obey `allowed_paths` and `acceptance_criteria`, and
-  keep run communication metadata current with `record_run_binding`.
+  use `metadata.session_bind.target_actor_id` as the intended worker binding
+  before any run exists. Keep run communication metadata current with
+  `record_run_binding` after the conversation starts.

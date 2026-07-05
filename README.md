@@ -5,6 +5,8 @@
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
+<!-- mcp-name: io.github.yanqiw/comem -->
+
 Append-only **coordination memory** for multi-agent (and agent + human) work,
 exposed as a local [Model Context Protocol](https://modelcontextprotocol.io) (MCP)
 server backed by SQLite — plus a local web management dashboard and goal-level
@@ -39,12 +41,22 @@ of coordination decisions.
 Not a fit: as your only long-term source of truth; as a place to store `.env`
 files, tokens, passwords, or credential-bearing logs.
 
+## Launch resources
+
+- [90-second demo script](docs/demo-script.md) — a short walkthrough for showing
+  leases, handoff evidence, integrator acceptance, and the dashboard.
+- [Launch post draft](docs/launch-post.md) — copy for announcing the project
+  without positioning it as generic memory or RAG.
+- [OSS launch checklist](docs/oss-launch-checklist.md) — release, GitHub
+  metadata, MCP Registry, and directory-submission steps.
+
 ## Install
 
 Requires Python ≥ 3.11.
 
 Install the single `comem` command with
-[uv](https://github.com/astral-sh/uv) or pipx:
+[uv](https://github.com/astral-sh/uv) or pipx after the package is published to
+PyPI:
 
 ```bash
 uv tool install coordination-memory-mcp   # or: pipx install coordination-memory-mcp
@@ -60,8 +72,8 @@ uvx --from coordination-memory-mcp comem --help
 
 ### From source
 
-Not published to your index yet, or want to run your own changes? Install the
-`comem` command straight from a checkout:
+If the PyPI page is not live yet, or you want to run your own changes, install
+the `comem` command straight from a checkout:
 
 ```bash
 git clone https://github.com/yanqiw/comem
@@ -172,7 +184,9 @@ Fake local dispatch:
 comem loop --team default --adapter fake --once
 ```
 
-The loop stores Codex thread binding on runs, not assignments. Project design
+Loop-managed assignments should carry `metadata.session_bind.target_actor_id`
+so the scheduler knows the intended worker before any run exists. The actual
+Codex thread binding is recorded on the run after claim/start. Project design
 and plan context must remain in Markdown files; assignments should reference
 those files through metadata `context_refs`.
 

@@ -63,6 +63,58 @@ def test_create_assignment_auto_creates_referenced_workspace(tmp_path: Path) -> 
     assert "ws-asn" in memory.get_snapshot()["workspaces"]
 
 
+def test_create_assignment_derives_session_bind_from_actor_hint(tmp_path: Path) -> None:
+    memory = open_memory(tmp_path)
+
+    assignment = memory.create_assignment(
+        assignment_id="a-session-bind",
+        title="Session bind",
+        actor_id="integrator",
+        actor_role="integrator",
+        base_revision=0,
+        metadata={"assigned_actor_hint": "codex-worker-a"},
+    )
+
+    assert assignment["metadata"]["assigned_actor_hint"] == "codex-worker-a"
+    assert assignment["metadata"]["session_bind"] == {
+        "target_actor_id": "codex-worker-a",
+        "status": "pending",
+        "session_kind": "codex_thread",
+    }
+    detail = memory.get_assignment_detail("a-session-bind")
+    created_event = detail["events"][0]
+    assert created_event["event_type"] == "assignment_created"
+    assert created_event["payload"]["metadata"]["session_bind"]["target_actor_id"] == (
+        "codex-worker-a"
+    )
+
+
+def test_create_assignment_preserves_explicit_session_bind(tmp_path: Path) -> None:
+    memory = open_memory(tmp_path)
+
+    assignment = memory.create_assignment(
+        assignment_id="a-explicit-bind",
+        title="Explicit bind",
+        actor_id="integrator",
+        actor_role="integrator",
+        base_revision=0,
+        metadata={
+            "assigned_actor_hint": "codex-worker-a",
+            "session_bind": {
+                "target_actor_id": "codex-worker-b",
+                "status": "reserved",
+                "session_kind": "codex_thread",
+            },
+        },
+    )
+
+    assert assignment["metadata"]["session_bind"] == {
+        "target_actor_id": "codex-worker-b",
+        "status": "reserved",
+        "session_kind": "codex_thread",
+    }
+
+
 def test_register_workspace_upserts(tmp_path: Path) -> None:
     memory = open_memory(tmp_path)
 
