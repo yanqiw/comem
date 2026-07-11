@@ -19,5 +19,5 @@
   - [Local Codex loop detailed design](design/local-codex-loop-detailed-design.md)
     — local-only Codex scheduling design shaped for later service mode.
 
-For project background and security boundaries, see the top-level
-[README](../README.md).
+For project background and security boundaries, see the
+[repository README](https://github.com/yanqiw/comem#readme).

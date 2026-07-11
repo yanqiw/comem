@@ -30,7 +30,8 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://yanqiw.github.io/"
+Homepage = "https://yanqiw.github.io/comem/"
+Documentation = "https://yanqiw.github.io/comem/quickstart"
 Repository = "https://github.com/yanqiw/comem"
 Issues = "https://github.com/yanqiw/comem/issues"
 
