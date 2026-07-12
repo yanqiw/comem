@@ -68,9 +68,7 @@ def checkpoint(
         actor_role="agent",
         client_update_id=client_update_id,
         source_event_sequence=(
-            run["events"][0]["sequence"]
-            if source_event_sequence is None
-            else source_event_sequence
+            run["events"][0]["sequence"] if source_event_sequence is None else source_event_sequence
         ),
         brief=brief or valid_brief(),
     )

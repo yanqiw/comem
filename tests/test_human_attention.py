@@ -58,21 +58,25 @@ def test_normalize_human_brief_requires_fixed_human_fields() -> None:
 
 
 def test_domain_status_constants_have_the_canonical_values() -> None:
-    assert frozenset(
-        {
-            "phase_changed",
-            "milestone_completed",
-            "plan_changed",
-            "decision_made",
-            "risk_changed",
-            "intervention_requested",
-            "handoff",
-            "run_finished",
-        }
-    ) == MANDATORY_CHECKPOINT_TRIGGERS
-    assert frozenset(
-        {"accepted", "rejected", "cancelled", "superseded", "blocked"}
-    ) == TERMINAL_ASSIGNMENT_STATUSES
+    assert (
+        frozenset(
+            {
+                "phase_changed",
+                "milestone_completed",
+                "plan_changed",
+                "decision_made",
+                "risk_changed",
+                "intervention_requested",
+                "handoff",
+                "run_finished",
+            }
+        )
+        == MANDATORY_CHECKPOINT_TRIGGERS
+    )
+    assert (
+        frozenset({"accepted", "rejected", "cancelled", "superseded", "blocked"})
+        == TERMINAL_ASSIGNMENT_STATUSES
+    )
 
 
 @pytest.mark.parametrize(
@@ -92,9 +96,7 @@ def test_domain_status_constants_have_the_canonical_values() -> None:
         ("context_refs", [1]),
     ],
 )
-def test_normalize_human_brief_rejects_invalid_field_values(
-    field: str, value: object
-) -> None:
+def test_normalize_human_brief_rejects_invalid_field_values(field: str, value: object) -> None:
     brief = valid_brief()
     brief[field] = value
 
@@ -170,9 +172,7 @@ def test_attention_rejects_red_from_nonblocking_raise_path() -> None:
         ("source_event_ids", [""]),
     ],
 )
-def test_normalize_attention_item_rejects_invalid_fields(
-    field: str, value: object
-) -> None:
+def test_normalize_attention_item_rejects_invalid_fields(field: str, value: object) -> None:
     item = valid_attention()
     item[field] = value
 
@@ -192,7 +192,9 @@ def test_normalize_attention_item_requires_every_canonical_field() -> None:
     item = valid_attention()
     del item["source_event_ids"]
 
-    with pytest.raises(ValueError, match="attention item missing required fields: source_event_ids"):
+    with pytest.raises(
+        ValueError, match="attention item missing required fields: source_event_ids"
+    ):
         human_attention.normalize_attention_item(item)
 
 

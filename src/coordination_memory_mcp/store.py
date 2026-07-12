@@ -931,15 +931,12 @@ class CoordinationMemory:
                 if prior["payload"].get("client_update_id") == client_update_id:
                     if prior["payload"] == payload:
                         return prior
-                    raise ValidationError(
-                        "client_update_id already used with a different payload"
-                    )
-            if prior_events and source_event_sequence < prior_events[-1]["payload"][
-                "source_event_sequence"
-            ]:
-                raise ValidationError(
-                    "source_event_sequence cannot be older than the latest brief"
-                )
+                    raise ValidationError("client_update_id already used with a different payload")
+            if (
+                prior_events
+                and source_event_sequence < prior_events[-1]["payload"]["source_event_sequence"]
+            ):
+                raise ValidationError("source_event_sequence cannot be older than the latest brief")
 
             return self._insert_run_event(
                 conn,
@@ -1073,9 +1070,7 @@ class CoordinationMemory:
                 if prior["payload"].get("client_update_id") == client_update_id:
                     if prior["payload"] == payload:
                         return prior
-                    raise ValidationError(
-                        "client_update_id already used with a different payload"
-                    )
+                    raise ValidationError("client_update_id already used with a different payload")
             return self._insert_run_event(
                 conn,
                 run=run,
@@ -1123,9 +1118,7 @@ class CoordinationMemory:
             ).fetchall()
 
         resolved_ids = {row["reviewed_event_id"] for row in resolved_rows}
-        assignment_statuses = {
-            row["assignment_id"]: row["status"] for row in assignment_rows
-        }
+        assignment_statuses = {row["assignment_id"]: row["status"] for row in assignment_rows}
         latest: dict[tuple[str, str], dict[str, Any]] = {}
         red_items: list[dict[str, Any]] = []
         for row in rows:
@@ -1176,9 +1169,7 @@ class CoordinationMemory:
             level: sum(item["level"] == level for item in projected)
             for level in ("red", "yellow", "green")
         }
-        visible = [
-            item for item in projected if include_green or item["level"] != "green"
-        ]
+        visible = [item for item in projected if include_green or item["level"] != "green"]
         level_order = {"red": 0, "yellow": 1, "green": 2}
         visible.sort(key=lambda item: (level_order[item["level"]], item["sequence"]))
         settings = team["settings"]
