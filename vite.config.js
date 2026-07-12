@@ -1,9 +1,10 @@
 import { svelte } from "@sveltejs/vite-plugin-svelte";
+import { svelteTesting } from "@testing-library/svelte/vite";
 import { defineConfig } from "vite";
 
 export default defineConfig({
   root: "frontend",
-  plugins: [svelte()],
+  plugins: [svelte(), svelteTesting()],
   build: {
     outDir: "../src/coordination_memory_mcp/static",
     emptyOutDir: true,
@@ -21,6 +22,9 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    environmentOptions: {
+      jsdom: { url: "http://localhost/" },
+    },
     include: ["test/**/*.test.js"],
   },
 });

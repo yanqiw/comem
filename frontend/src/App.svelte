@@ -52,6 +52,7 @@
   let teams = [];
   let auto = true;
   let timer = null;
+  let routeLoadGeneration = 0;
   let route = { name: "dashboard", id: null };
   let loading = true;
   let error = "";
@@ -149,58 +150,80 @@
     if (isDashboardRoute() && auto) timer = setInterval(autoTick, 5000);
   }
 
-  async function loadDashboard(teamId, scoped) {
+  async function loadDashboard(teamId, generation) {
     setSelectedTeam(teamId);
     const [nextBoard, nextAttention, nextGovernance] = await Promise.all([
       getJSON("/api/board?team_id=" + encodeURIComponent(teamId)),
       getJSON("/api/attention?team_id=" + encodeURIComponent(teamId)),
       getJSON("/api/governance?team_id=" + encodeURIComponent(teamId)),
     ]);
+    if (generation !== routeLoadGeneration) return;
     board = nextBoard;
     attentionBoard = nextAttention;
     governance = nextGovernance;
-    route = { name: scoped ? "team" : "dashboard", id: scoped ? teamId : null };
   }
 
   async function loadCurrentRoute({ silent = false } = {}) {
+    const generation = ++routeLoadGeneration;
+    const isCurrent = () => generation === routeLoadGeneration;
     const nextRoute = parseRoute();
     if (!silent) loading = true;
     error = "";
+    route = nextRoute;
     try {
-      if (nextRoute.name === "dashboard") await loadDashboard(team, false);
-      else if (nextRoute.name === "team") await loadDashboard(nextRoute.id, true);
+      if (nextRoute.name === "dashboard") await loadDashboard(team, generation);
+      else if (nextRoute.name === "team") await loadDashboard(nextRoute.id, generation);
       else if (nextRoute.name === "workspaces") {
-        route = nextRoute;
-        workspaces = await getJSON("/api/workspaces");
+        const nextWorkspaces = await getJSON("/api/workspaces");
+        if (!isCurrent()) return false;
+        workspaces = nextWorkspaces;
       } else if (nextRoute.name === "workspace") {
-        route = nextRoute;
-        workspaceDetail = await getJSON("/api/workspaces/" + encodeURIComponent(nextRoute.id));
+        const nextWorkspaceDetail = await getJSON(
+          "/api/workspaces/" + encodeURIComponent(nextRoute.id),
+        );
+        if (!isCurrent()) return false;
+        workspaceDetail = nextWorkspaceDetail;
       } else if (nextRoute.name === "contract") {
-        route = nextRoute;
-        contractDetail = await getJSON("/api/contracts/" + encodeURIComponent(nextRoute.id));
+        const nextContractDetail = await getJSON(
+          "/api/contracts/" + encodeURIComponent(nextRoute.id),
+        );
+        if (!isCurrent()) return false;
+        contractDetail = nextContractDetail;
       } else if (nextRoute.name === "assignment") {
-        route = nextRoute;
-        assignmentDetail = await getJSON("/api/assignments/" + encodeURIComponent(nextRoute.id));
-        briefDetail = assignmentDetail.assignment?.active_run_id
+        const nextAssignmentDetail = await getJSON(
+          "/api/assignments/" + encodeURIComponent(nextRoute.id),
+        );
+        const nextBriefDetail = nextAssignmentDetail.assignment?.active_run_id
           ? await getOptionalJSON(
               "/api/runs/" +
-                encodeURIComponent(assignmentDetail.assignment.active_run_id) +
+                encodeURIComponent(nextAssignmentDetail.assignment.active_run_id) +
                 "/brief",
             )
           : null;
+        if (!isCurrent()) return false;
+        assignmentDetail = nextAssignmentDetail;
+        briefDetail = nextBriefDetail;
       } else if (nextRoute.name === "run") {
-        route = nextRoute;
-        [runDetail, briefDetail] = await Promise.all([
+        const [nextRunDetail, nextBriefDetail] = await Promise.all([
           getJSON("/api/runs/" + encodeURIComponent(nextRoute.id)),
           getOptionalJSON("/api/runs/" + encodeURIComponent(nextRoute.id) + "/brief"),
         ]);
+        if (!isCurrent()) return false;
+        runDetail = nextRunDetail;
+        briefDetail = nextBriefDetail;
       }
+      if (!isCurrent()) return false;
       updated = "updated " + new Date().toLocaleTimeString();
+      return true;
     } catch (err) {
+      if (!isCurrent()) return false;
       error = err.message || String(err);
+      return false;
     } finally {
-      loading = false;
-      scheduleAuto();
+      if (isCurrent()) {
+        loading = false;
+        scheduleAuto();
+      }
     }
   }
 
@@ -210,7 +233,8 @@
     if (selection) return;
     const y = window.scrollY;
     const boardLeft = boardEl ? boardEl.scrollLeft : 0;
-    await loadCurrentRoute({ silent: true });
+    const loaded = await loadCurrentRoute({ silent: true });
+    if (!loaded) return;
     await tick();
     window.scrollTo(0, y);
     restoreHorizontalScroll(boardEl, boardLeft);
