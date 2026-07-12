@@ -2,7 +2,10 @@
   import { onMount, tick } from "svelte";
 
   import {
+    attentionLabel,
+    attentionSortValue,
     badgeColor,
+    briefFreshnessLabel,
     empty,
     eventDetail,
     formatTime,
@@ -58,12 +61,14 @@
   let boardEl;
 
   let board = null;
+  let attentionBoard = null;
   let governance = null;
   let workspaces = [];
   let workspaceDetail = null;
   let contractDetail = null;
   let assignmentDetail = null;
   let runDetail = null;
+  let briefDetail = null;
 
   const isDashboardRoute = () => route.name === "dashboard" || route.name === "team";
 
@@ -83,6 +88,21 @@
 
   async function postJSON(path) {
     const response = await fetch(path, { method: "POST" });
+    if (!response.ok) {
+      let message = response.statusText;
+      try {
+        message = (await response.json()).error || message;
+      } catch (_err) {
+        message = response.statusText;
+      }
+      throw new Error(message);
+    }
+    return response.json();
+  }
+
+  async function getOptionalJSON(path) {
+    const response = await fetch(path);
+    if (response.status === 400 || response.status === 404) return null;
     if (!response.ok) {
       let message = response.statusText;
       try {
@@ -131,11 +151,13 @@
 
   async function loadDashboard(teamId, scoped) {
     setSelectedTeam(teamId);
-    const [nextBoard, nextGovernance] = await Promise.all([
+    const [nextBoard, nextAttention, nextGovernance] = await Promise.all([
       getJSON("/api/board?team_id=" + encodeURIComponent(teamId)),
+      getJSON("/api/attention?team_id=" + encodeURIComponent(teamId)),
       getJSON("/api/governance?team_id=" + encodeURIComponent(teamId)),
     ]);
     board = nextBoard;
+    attentionBoard = nextAttention;
     governance = nextGovernance;
     route = { name: scoped ? "team" : "dashboard", id: scoped ? teamId : null };
   }
@@ -159,9 +181,19 @@
       } else if (nextRoute.name === "assignment") {
         route = nextRoute;
         assignmentDetail = await getJSON("/api/assignments/" + encodeURIComponent(nextRoute.id));
+        briefDetail = assignmentDetail.assignment?.active_run_id
+          ? await getOptionalJSON(
+              "/api/runs/" +
+                encodeURIComponent(assignmentDetail.assignment.active_run_id) +
+                "/brief",
+            )
+          : null;
       } else if (nextRoute.name === "run") {
         route = nextRoute;
-        runDetail = await getJSON("/api/runs/" + encodeURIComponent(nextRoute.id));
+        [runDetail, briefDetail] = await Promise.all([
+          getJSON("/api/runs/" + encodeURIComponent(nextRoute.id)),
+          getOptionalJSON("/api/runs/" + encodeURIComponent(nextRoute.id) + "/brief"),
+        ]);
       }
       updated = "updated " + new Date().toLocaleTimeString();
     } catch (err) {
@@ -294,6 +326,31 @@
     return value == null ? empty : JSON.stringify(value);
   }
 
+  function sortedAttentionItems(items) {
+    return (items || [])
+      .filter((item) => item.level !== "green")
+      .slice()
+      .sort(
+        (a, b) =>
+          attentionSortValue(a.level) - attentionSortValue(b.level) ||
+          Number(a.sequence || 0) - Number(b.sequence || 0),
+      );
+  }
+
+  function humanBriefRows(detail) {
+    const brief = detail?.brief || {};
+    return [
+      ["schema_version", brief.schema_version],
+      ["current_goal", brief.current_goal],
+      ["current_stage", brief.current_stage],
+      ["recent_progress", jsonValue(brief.recent_progress)],
+      ["decisions_and_risks", jsonValue(brief.decisions_and_risks)],
+      ["human_intervention", jsonValue(brief.human_intervention)],
+      ["next_steps", jsonValue(brief.next_steps)],
+      ["context_refs", jsonValue(brief.context_refs)],
+    ];
+  }
+
   function contractCards(cards, attention) {
     return (cards || []).map((card) => ({ ...card, attention }));
   }
@@ -367,6 +424,8 @@
   {:else if route.name === "dashboard" || route.name === "team"}
     {@const laneData = board?.lanes || {}}
     {@const counts = governance?.counts || {}}
+    {@const humanAttentionCounts = attentionBoard?.counts || {}}
+    {@const humanAttentionItems = sortedAttentionItems(attentionBoard?.items)}
     {@const attentionAssignments = queueAttentionTotal(laneData)}
     {@const blockers = Number(counts.open_blockers || 0)}
     {@const healthTone = blockers ? "critical" : attentionAssignments ? "warn" : "success"}
@@ -390,6 +449,49 @@
           <strong>{healthText}</strong>
           <span>{attentionAssignments} attention items</span>
         </div>
+      </section>
+
+      <section class="attention-console" aria-labelledby="human-attention-title">
+        <div class="attention-console-head">
+          <div>
+            <div class="dashboard-kicker">Human Attention</div>
+            <h2 id="human-attention-title">需要人介入</h2>
+          </div>
+          <div class="attention-counts" aria-label="Attention counts">
+            <span class="attention-count critical">红 {humanAttentionCounts.red || 0}</span>
+            <span class="attention-count warn">黄 {humanAttentionCounts.yellow || 0}</span>
+            <span class="attention-count resolved">绿 {humanAttentionCounts.green || 0}</span>
+          </div>
+        </div>
+        {#if humanAttentionItems.length}
+          <div class="attention-list">
+            {#each humanAttentionItems as item (item.event_id)}
+              <article class={"attention-item attention-item-" + item.level}>
+                <div class="attention-item-head">
+                  <strong>{attentionLabel(item.level)}</strong>
+                  <span class={"badge " + (item.level === "red" ? "red" : "amber")}>{item.reason_code || statusLabel(item.level)}</span>
+                </div>
+                <p class="attention-reason">{item.why_now}</p>
+                {#if item.level === "red"}
+                  <div class="decision-packet">
+                    <strong>Decision Packet</strong>
+                    <div>{item.decision_packet?.summary || item.why_now}</div>
+                    {#if item.decision_packet?.options}
+                      <div class="muted">Options: {jsonValue(item.decision_packet.options)}</div>
+                    {/if}
+                  </div>
+                {/if}
+                <div class="attention-action"><span>建议动作</span> {item.recommended_action}</div>
+                <div class="attention-links">
+                  <a href={"#/runs/" + encodeURIComponent(item.run_id)}>查看 Run</a>
+                  <a href={"#/assignments/" + encodeURIComponent(item.assignment_id)}>查看 Assignment</a>
+                </div>
+              </article>
+            {/each}
+          </div>
+        {:else}
+          <div class="empty-state attention-empty">当前没有需要你介入的事项</div>
+        {/if}
       </section>
 
       <div class="dashboard-summary">
@@ -809,6 +911,33 @@
           {/each}
         </div>
       {/if}
+      <div class="section-label">Human Resume Brief</div>
+      {#if briefDetail}
+        <section class="human-brief">
+          <div class="human-brief-head">
+            <div>
+              <strong>Latest Brief</strong>
+              <div class="muted">Updated {briefDetail.updated_at || empty}</div>
+            </div>
+            <span class={"badge " + (briefDetail.freshness === "fresh" ? "green" : "amber")}>
+              {briefFreshnessLabel(briefDetail.freshness)}
+            </span>
+          </div>
+          <table class="human-brief-table">
+            <tbody>
+              <tr><th>field</th><th>value</th></tr>
+              {#each humanBriefRows(briefDetail) as [label, value]}
+                <tr><td>{label}</td><td>{value}</td></tr>
+              {/each}
+            </tbody>
+          </table>
+          <div class="human-brief-meta muted">
+            source event {briefDetail.source_event_sequence ?? empty} / latest event {briefDetail.latest_event_sequence ?? empty}
+          </div>
+        </section>
+      {:else}
+        <div class="empty-state human-brief-empty">尚无 Human Resume Brief</div>
+      {/if}
       <div class="section-label">Runs</div>
       {#if (assignmentDetail.runs || []).length}
         <table>
@@ -884,6 +1013,33 @@
           {/if}
         </tbody>
       </table>
+      <div class="section-label">Human Resume Brief</div>
+      {#if briefDetail}
+        <section class="human-brief">
+          <div class="human-brief-head">
+            <div>
+              <strong>Latest Brief</strong>
+              <div class="muted">Updated {briefDetail.updated_at || empty}</div>
+            </div>
+            <span class={"badge " + (briefDetail.freshness === "fresh" ? "green" : "amber")}>
+              {briefFreshnessLabel(briefDetail.freshness)}
+            </span>
+          </div>
+          <table class="human-brief-table">
+            <tbody>
+              <tr><th>field</th><th>value</th></tr>
+              {#each humanBriefRows(briefDetail) as [label, value]}
+                <tr><td>{label}</td><td>{value}</td></tr>
+              {/each}
+            </tbody>
+          </table>
+          <div class="human-brief-meta muted">
+            source event {briefDetail.source_event_sequence ?? empty} / latest event {briefDetail.latest_event_sequence ?? empty}
+          </div>
+        </section>
+      {:else}
+        <div class="empty-state human-brief-empty">尚无 Human Resume Brief</div>
+      {/if}
       <div class="section-label">Events</div>
       {#if (runDetail.events || []).length}
         <div class="events">

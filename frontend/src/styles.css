@@ -62,6 +62,25 @@ button.danger:hover{background:#fdf0f0}
 .dashboard-health.warn strong{color:var(--amber)}
 .dashboard-health.critical strong{color:var(--red)}
 .dashboard-health span:last-child{font-size:12px;color:var(--muted)}
+.attention-console{border:1px solid var(--line);border-radius:10px;background:var(--surface-panel);padding:14px 16px;box-shadow:var(--shadow)}
+.attention-console-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+.attention-console-head h2{margin:0;font-size:18px;line-height:1.2}
+.attention-counts{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.attention-count{display:inline-flex;align-items:center;min-height:24px;border:1px solid var(--line);border-radius:999px;padding:2px 8px;font-weight:700;font-variant-numeric:tabular-nums}
+.attention-count.critical{border-color:#ff8182;background:#ffebe9;color:var(--red)}
+.attention-count.warn{border-color:#eac54f;background:#fff8c5;color:var(--amber)}
+.attention-count.resolved{border-color:#7ee787;background:#dafbe1;color:var(--green)}
+.attention-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:8px}
+.attention-item{display:grid;align-content:start;gap:7px;border:1px solid var(--line-soft);border-left:4px solid var(--amber);border-radius:8px;background:#fffdf3;padding:10px 12px}
+.attention-item-red{border-left-color:var(--red);background:#fff7f6}
+.attention-item-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.attention-item-head>strong{font-size:14px}
+.attention-reason{margin:0;line-height:1.4}
+.decision-packet{display:grid;gap:3px;border:1px solid #efc9c5;border-radius:6px;background:#ffffff;padding:8px;line-height:1.4}
+.attention-action{color:var(--ink);line-height:1.4}
+.attention-action span{color:var(--muted);font-weight:600}
+.attention-links{display:flex;gap:12px;font-weight:600;font-size:12px}
+.attention-empty{text-align:left}
 .dashboard-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
 .dashboard-stat{border:1px solid var(--line);border-radius:8px;background:var(--surface-panel);padding:12px 14px;box-shadow:var(--shadow)}
 .dashboard-stat.warn{background:#fff8c5;border-color:#eac54f}
@@ -184,6 +203,14 @@ tr:hover td{background:#fbfdff}
 .kv{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;color:var(--ink);word-break:break-word}
 .kv b{color:var(--muted);font-weight:600}
 .callout{background:#fdf6e3;border:1px solid #efdca0;border-radius:8px;padding:8px 10px;color:var(--amber);margin-top:12px}
+.human-brief{border:1px solid var(--line);border-radius:8px;background:var(--surface-panel);padding:12px;margin-bottom:14px;box-shadow:var(--shadow)}
+.human-brief-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}
+.human-brief-head .muted{margin-top:3px;font-size:12px}
+.human-brief-table{margin-bottom:8px;box-shadow:none}
+.human-brief-table td:first-child{width:180px;color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px}
+.human-brief-table td:last-child{white-space:pre-wrap;overflow-wrap:anywhere}
+.human-brief-meta{font-size:12px}
+.human-brief-empty{margin-bottom:14px;text-align:left}
 .crumb{color:var(--muted);margin-bottom:6px}
 .err{color:var(--red)}
 a:focus-visible,button:focus-visible,select:focus-visible,summary:focus-visible,input:focus-visible{outline:2px solid var(--link);outline-offset:2px;border-radius:3px}
@@ -199,6 +226,9 @@ a:focus-visible,button:focus-visible,select:focus-visible,summary:focus-visible,
   .dashboard-hero h1{font-size:23px}
   .dashboard-health{justify-self:stretch;min-width:0;border-left:none;border-top:1px solid var(--line-soft);padding:12px 0 0}
   .dashboard-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .attention-console-head{align-items:flex-start;display:grid}
+  .attention-counts{justify-content:flex-start}
+  .attention-list{grid-template-columns:1fr}
   .section-heading{display:grid;gap:2px;align-items:start}
   .board{grid-template-columns:1fr}
   .product-board{grid-template-columns:none;grid-auto-columns:minmax(260px,82vw)}

@@ -1,7 +1,10 @@
 import { describe, expect, test } from "vitest";
 
 import {
+  attentionLabel,
+  attentionSortValue,
   boardStatusSortValue,
+  briefFreshnessLabel,
   eventDetail,
   queueEntries,
   restoreHorizontalScroll,
@@ -9,6 +12,24 @@ import {
 } from "../src/ui.js";
 
 describe("coordination console ui helpers", () => {
+  test("orders human attention by required human urgency", () => {
+    expect(
+      ["green", "red", "yellow"].sort(
+        (a, b) => attentionSortValue(a) - attentionSortValue(b),
+      ),
+    ).toEqual(["red", "yellow", "green"]);
+  });
+
+  test("labels human attention without conflating it with lifecycle status", () => {
+    expect(attentionLabel("red")).toBe("必须现在介入");
+    expect(attentionLabel("yellow")).toBe("建议关注");
+  });
+
+  test("formats brief freshness without implying agent recovery", () => {
+    expect(briefFreshnessLabel("fresh")).toBe("brief up to date");
+    expect(briefFreshnessLabel("stale")).toBe("brief needs refresh");
+  });
+
   test("orders board lanes by the documented workflow", () => {
     const lanes = {
       blocked: [],

@@ -1,5 +1,24 @@
 export const empty = "-";
 
+export function attentionSortValue(level) {
+  return { red: 10, yellow: 20, green: 30 }[level] || 999;
+}
+
+export function attentionLabel(level) {
+  return {
+    red: "必须现在介入",
+    yellow: "建议关注",
+    green: "已解除",
+  }[level] || statusLabel(level);
+}
+
+export function briefFreshnessLabel(freshness) {
+  return {
+    fresh: "brief up to date",
+    stale: "brief needs refresh",
+  }[freshness] || statusLabel(freshness);
+}
+
 export const boardStatusOrder = {
   proposed: 10,
   ready: 10,
