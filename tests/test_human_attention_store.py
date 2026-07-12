@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sqlite3
 from pathlib import Path
 from typing import Any
 
@@ -141,6 +142,46 @@ def test_checkpoint_rejects_another_agent(tmp_path: Path) -> None:
 
     with pytest.raises(AuthorizationError, match="does not own run"):
         checkpoint(memory, run, actor_id="agent-b")
+
+
+def test_checkpoint_brief_stays_fresh_past_window_without_later_work(
+    tmp_path: Path,
+) -> None:
+    memory, run = claimed_run(tmp_path)
+    event = checkpoint(memory, run)
+    with sqlite3.connect(memory.db_path) as conn:
+        conn.execute(
+            "update events set created_at = ? where event_id = ?",
+            ("2000-01-01T00:00:00+00:00", event["event_id"]),
+        )
+
+    projection = memory.get_human_brief(run["run_id"])
+
+    assert projection["freshness"] == "fresh"
+    assert projection["latest_event_sequence"] == projection["source_event_sequence"]
+
+
+def test_checkpoint_brief_becomes_stale_past_window_after_later_work(
+    tmp_path: Path,
+) -> None:
+    memory, run = claimed_run(tmp_path)
+    event = checkpoint(memory, run)
+    heartbeat = memory.heartbeat_run(
+        run_id=run["run_id"],
+        actor_id="agent-a",
+        actor_role="agent",
+        summary="Continued implementation",
+    )
+    with sqlite3.connect(memory.db_path) as conn:
+        conn.execute(
+            "update events set created_at = ? where event_id = ?",
+            ("2000-01-01T00:00:00+00:00", event["event_id"]),
+        )
+
+    projection = memory.get_human_brief(run["run_id"])
+
+    assert projection["freshness"] == "stale"
+    assert projection["latest_event_sequence"] == heartbeat["sequence"]
 
 
 def raise_attention(

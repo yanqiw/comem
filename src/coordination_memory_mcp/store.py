@@ -975,7 +975,11 @@ class CoordinationMemory:
             if event_row is None:
                 raise ValidationError(f"human brief not found for run: {run_id}")
             latest_sequence = conn.execute(
-                "select max(sequence) from events where run_id = ?",
+                """
+                select max(sequence)
+                from events
+                where run_id = ? and event_type != 'human_brief_updated'
+                """,
                 (run_id,),
             ).fetchone()[0]
             team_row = conn.execute(
