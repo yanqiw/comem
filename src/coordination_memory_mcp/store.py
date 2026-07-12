@@ -8,6 +8,15 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
+from coordination_memory_mcp.human_attention import (
+    DEFAULT_FRESHNESS_WINDOW_MINUTES,
+    DEFAULT_YELLOW_DIGEST_MINUTES,
+    TERMINAL_ASSIGNMENT_STATUSES,
+    brief_freshness,
+    normalize_attention_item,
+    normalize_human_brief,
+)
+
 ASSIGNMENT_STATUSES = {
     "proposed",
     "ready",
@@ -866,6 +875,323 @@ class CoordinationMemory:
             )
         return self.get_run_detail(run_id)
 
+    def checkpoint_run(
+        self,
+        *,
+        run_id: str,
+        actor_id: str,
+        actor_role: str,
+        client_update_id: str,
+        source_event_sequence: int,
+        brief: dict[str, Any],
+    ) -> dict[str, Any]:
+        self._require_known_role(actor_role)
+        if not isinstance(client_update_id, str) or not client_update_id.strip():
+            raise ValidationError("client_update_id must be a non-empty string")
+        try:
+            normalized_brief = normalize_human_brief(brief)
+        except ValueError as error:
+            raise ValidationError(str(error)) from error
+        if (
+            isinstance(source_event_sequence, bool)
+            or not isinstance(source_event_sequence, int)
+            or source_event_sequence <= 0
+        ):
+            raise ValidationError("source_event_sequence must be a positive integer")
+
+        payload = {
+            "client_update_id": client_update_id,
+            "source_event_sequence": source_event_sequence,
+            "brief": normalized_brief,
+        }
+        now = self._now()
+        with self._connect() as conn:
+            run, assignment = self._require_active_mutable_run(conn, run_id)
+            self._require_agent_owns_run(run, actor_id, actor_role)
+            source = conn.execute(
+                "select 1 from events where run_id = ? and sequence = ?",
+                (run_id, source_event_sequence),
+            ).fetchone()
+            if source is None:
+                raise ValidationError(
+                    "source_event_sequence must reference an existing event for the run"
+                )
+
+            prior_rows = conn.execute(
+                """
+                select *
+                from events
+                where run_id = ? and event_type = 'human_brief_updated'
+                order by sequence
+                """,
+                (run_id,),
+            ).fetchall()
+            prior_events = [self._event_from_row(row) for row in prior_rows]
+            for prior in prior_events:
+                if prior["payload"].get("client_update_id") == client_update_id:
+                    if prior["payload"] == payload:
+                        return prior
+                    raise ValidationError(
+                        "client_update_id already used with a different payload"
+                    )
+            if prior_events and source_event_sequence < prior_events[-1]["payload"][
+                "source_event_sequence"
+            ]:
+                raise ValidationError(
+                    "source_event_sequence cannot be older than the latest brief"
+                )
+
+            return self._insert_run_event(
+                conn,
+                run=run,
+                assignment=assignment,
+                event_type="human_brief_updated",
+                actor_id=actor_id,
+                actor_role=actor_role,
+                payload=payload,
+                reviewed_event_id=None,
+                created_at=now,
+            )
+
+    def get_human_brief(self, run_id: str) -> dict[str, Any]:
+        with self._connect() as conn:
+            run_row = conn.execute(
+                "select * from runs where run_id = ?",
+                (run_id,),
+            ).fetchone()
+            if run_row is None:
+                raise ValidationError(f"run not found: {run_id}")
+            run = self._run_from_row(run_row)
+            event_row = conn.execute(
+                """
+                select *
+                from events
+                where run_id = ? and event_type = 'human_brief_updated'
+                order by sequence desc
+                limit 1
+                """,
+                (run_id,),
+            ).fetchone()
+            if event_row is None:
+                raise ValidationError(f"human brief not found for run: {run_id}")
+            latest_sequence = conn.execute(
+                "select max(sequence) from events where run_id = ?",
+                (run_id,),
+            ).fetchone()[0]
+            team_row = conn.execute(
+                "select settings_json from teams where team_id = ?",
+                (run["team_id"],),
+            ).fetchone()
+
+        event = self._event_from_row(event_row)
+        settings = json.loads(team_row["settings_json"]) if team_row is not None else {}
+        configured_window = settings.get(
+            "freshness_window_minutes", DEFAULT_FRESHNESS_WINDOW_MINUTES
+        )
+        if (
+            isinstance(configured_window, bool)
+            or not isinstance(configured_window, int)
+            or configured_window <= 0
+        ):
+            configured_window = DEFAULT_FRESHNESS_WINDOW_MINUTES
+        payload = event["payload"]
+        return {
+            "run_id": run_id,
+            "assignment_id": run["assignment_id"],
+            "brief": payload["brief"],
+            "client_update_id": payload["client_update_id"],
+            "source_event_sequence": payload["source_event_sequence"],
+            "latest_event_sequence": latest_sequence,
+            "updated_at": event["created_at"],
+            "freshness": brief_freshness(
+                updated_at=event["created_at"],
+                source_event_sequence=payload["source_event_sequence"],
+                latest_event_sequence=latest_sequence,
+                now=datetime.now(UTC),
+                freshness_window_minutes=configured_window,
+            ),
+            "freshness_window_minutes": configured_window,
+        }
+
+    def raise_attention(
+        self,
+        *,
+        run_id: str,
+        actor_id: str,
+        actor_role: str,
+        client_update_id: str,
+        level: str,
+        target: str,
+        dedupe_key: str,
+        reason_code: str,
+        why_now: str,
+        recommended_action: str,
+        source_event_ids: list[str],
+    ) -> dict[str, Any]:
+        self._require_known_role(actor_role)
+        if not isinstance(client_update_id, str) or not client_update_id.strip():
+            raise ValidationError("client_update_id must be a non-empty string")
+        try:
+            attention = normalize_attention_item(
+                {
+                    "level": level,
+                    "target": target,
+                    "blocking": False,
+                    "dedupe_key": dedupe_key,
+                    "reason_code": reason_code,
+                    "why_now": why_now,
+                    "recommended_action": recommended_action,
+                    "source_event_ids": source_event_ids,
+                }
+            )
+        except ValueError as error:
+            raise ValidationError(str(error)) from error
+
+        payload = {
+            "client_update_id": client_update_id,
+            "attention": attention,
+        }
+        now = self._now()
+        with self._connect() as conn:
+            run, assignment = self._require_active_mutable_run(conn, run_id)
+            self._require_agent_owns_run(run, actor_id, actor_role)
+            prior_rows = conn.execute(
+                """
+                select *
+                from events
+                where run_id = ? and event_type = 'attention_raised'
+                order by sequence
+                """,
+                (run_id,),
+            ).fetchall()
+            for row in prior_rows:
+                prior = self._event_from_row(row)
+                if prior["payload"].get("client_update_id") == client_update_id:
+                    if prior["payload"] == payload:
+                        return prior
+                    raise ValidationError(
+                        "client_update_id already used with a different payload"
+                    )
+            return self._insert_run_event(
+                conn,
+                run=run,
+                assignment=assignment,
+                event_type="attention_raised",
+                actor_id=actor_id,
+                actor_role=actor_role,
+                payload=payload,
+                reviewed_event_id=None,
+                created_at=now,
+            )
+
+    def get_attention_board(
+        self,
+        team_id: str = "default",
+        target: str = "human",
+        include_green: bool = False,
+    ) -> dict[str, Any]:
+        team = self._get_team(team_id)
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                select e.*
+                from events e
+                join assignments a on a.assignment_id = e.assignment_id
+                where e.team_id = ?
+                  and e.event_type in ('attention_raised', 'intervention_requested')
+                order by e.sequence
+                """,
+                (team_id,),
+            ).fetchall()
+            resolved_rows = conn.execute(
+                """
+                select reviewed_event_id
+                from events
+                where team_id = ?
+                  and event_type = 'intervention_responded'
+                  and reviewed_event_id is not null
+                """,
+                (team_id,),
+            ).fetchall()
+            assignment_rows = conn.execute(
+                "select assignment_id, status from assignments where team_id = ?",
+                (team_id,),
+            ).fetchall()
+
+        resolved_ids = {row["reviewed_event_id"] for row in resolved_rows}
+        assignment_statuses = {
+            row["assignment_id"]: row["status"] for row in assignment_rows
+        }
+        latest: dict[tuple[str, str], dict[str, Any]] = {}
+        red_items: list[dict[str, Any]] = []
+        for row in rows:
+            event = self._event_from_row(row)
+            if assignment_statuses.get(event["assignment_id"]) in TERMINAL_ASSIGNMENT_STATUSES:
+                continue
+            if event["event_type"] == "attention_raised":
+                attention = event["payload"]["attention"]
+                latest[(event["run_id"], attention["dedupe_key"])] = {
+                    **attention,
+                    "client_update_id": event["payload"]["client_update_id"],
+                    "event_id": event["event_id"],
+                    "sequence": event["sequence"],
+                    "run_id": event["run_id"],
+                    "assignment_id": event["assignment_id"],
+                    "team_id": event["team_id"],
+                    "updated_at": event["created_at"],
+                }
+                continue
+            if target != "human" or event["event_id"] in resolved_ids:
+                continue
+            payload = event["payload"]
+            red_items.append(
+                {
+                    "level": "red",
+                    "target": "human",
+                    "blocking": True,
+                    "dedupe_key": f"intervention:{event['event_id']}",
+                    "reason_code": payload["intervention_kind"],
+                    "why_now": payload["prompt"],
+                    "recommended_action": "Respond to the intervention request",
+                    "source_event_ids": [event["event_id"]],
+                    "decision_packet": payload.get("decision_packet"),
+                    "event_id": event["event_id"],
+                    "sequence": event["sequence"],
+                    "run_id": event["run_id"],
+                    "assignment_id": event["assignment_id"],
+                    "team_id": event["team_id"],
+                    "updated_at": event["created_at"],
+                }
+            )
+
+        projected = [
+            *red_items,
+            *(item for item in latest.values() if item["target"] == target),
+        ]
+        counts = {
+            level: sum(item["level"] == level for item in projected)
+            for level in ("red", "yellow", "green")
+        }
+        visible = [
+            item for item in projected if include_green or item["level"] != "green"
+        ]
+        level_order = {"red": 0, "yellow": 1, "green": 2}
+        visible.sort(key=lambda item: (level_order[item["level"]], item["sequence"]))
+        settings = team["settings"]
+        return {
+            "team_id": team_id,
+            "target": target,
+            "counts": counts,
+            "items": visible,
+            "digest": {
+                "interval_minutes": settings.get(
+                    "yellow_digest_minutes", DEFAULT_YELLOW_DIGEST_MINUTES
+                ),
+                "channel": settings.get("attention_channel", "product_inbox"),
+                "group_by": ["owner", "project", "assignment"],
+            },
+        }
+
     def request_intervention(
         self,
         *,
@@ -874,8 +1200,11 @@ class CoordinationMemory:
         actor_role: str,
         prompt: str,
         intervention_kind: str,
+        decision_packet: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         self._require_known_role(actor_role)
+        if decision_packet is not None and not isinstance(decision_packet, dict):
+            raise ValidationError("decision_packet must be a JSON object")
         now = self._now()
         with self._connect() as conn:
             run, assignment = self._require_active_mutable_run(conn, run_id)
@@ -899,6 +1228,12 @@ class CoordinationMemory:
                 """,
                 (now, assignment["assignment_id"], run_id),
             )
+            payload: dict[str, Any] = {
+                "prompt": prompt,
+                "intervention_kind": intervention_kind,
+            }
+            if decision_packet is not None:
+                payload["decision_packet"] = decision_packet
             event = self._insert_run_event(
                 conn,
                 run=run,
@@ -906,10 +1241,7 @@ class CoordinationMemory:
                 event_type="intervention_requested",
                 actor_id=actor_id,
                 actor_role=actor_role,
-                payload={
-                    "prompt": prompt,
-                    "intervention_kind": intervention_kind,
-                },
+                payload=payload,
                 reviewed_event_id=None,
                 created_at=now,
             )
