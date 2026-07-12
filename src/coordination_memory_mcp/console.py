@@ -158,6 +158,19 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             self._send_json(self._memory().get_team_board(team_id))
             return
 
+        if parsed.path == "/api/attention":
+            team_id = query.get("team_id", ["default"])[0] or "default"
+            target = query.get("target", ["human"])[0] or "human"
+            include_green = query.get("include_green", ["false"])[0].lower() == "true"
+            self._send_json(
+                self._memory().get_attention_board(
+                    team_id=team_id,
+                    target=target,
+                    include_green=include_green,
+                )
+            )
+            return
+
         if parsed.path == "/api/workspaces":
             self._send_json(self._memory().list_workspaces())
             return
@@ -178,7 +191,13 @@ class ConsoleHandler(BaseHTTPRequestHandler):
 
         run_prefix = "/api/runs/"
         if parsed.path.startswith(run_prefix):
-            run_id = unquote(parsed.path[len(run_prefix) :])
+            run_suffix = parsed.path[len(run_prefix) :]
+            if run_suffix.endswith("/brief"):
+                run_id = unquote(run_suffix[: -len("/brief")])
+                if run_id:
+                    self._send_json(self._memory().get_human_brief(run_id))
+                    return
+            run_id = unquote(run_suffix)
             if run_id:
                 self._send_json(self._memory().get_run_detail(run_id))
                 return

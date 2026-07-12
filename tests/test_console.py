@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 import sys
 import threading
@@ -170,6 +171,79 @@ def test_static_assets_served(tmp_path: Path) -> None:
 
 def _fetch(memory: CoordinationMemory, path: str) -> tuple[int, str, str]:
     return _request(memory, path)
+
+
+def _seed_human_attention(memory: CoordinationMemory) -> str:
+    assignment = memory.create_assignment(
+        assignment_id="human-attention-console-task",
+        title="Human Attention Console Task",
+        actor_id="integrator",
+        actor_role="integrator",
+        base_revision=0,
+    )
+    claimed = memory.claim_assignment(
+        assignment_id=assignment["assignment_id"],
+        actor_id="agent-a",
+        actor_role="agent",
+        base_revision=assignment["revision"],
+    )
+    run_id = claimed["active_run_id"]
+    run = memory.get_run_detail(run_id)
+    memory.checkpoint_run(
+        run_id=run_id,
+        actor_id="agent-a",
+        actor_role="agent",
+        client_update_id="console-brief-1",
+        source_event_sequence=run["events"][0]["sequence"],
+        brief={
+            "schema_version": 1,
+            "current_goal": "Expose human attention APIs",
+            "current_stage": "implementing",
+            "recent_progress": ["Added store projections"],
+            "decisions_and_risks": [],
+            "human_intervention": {"needed": False, "blocking": False},
+            "next_steps": ["Expose read-only routes"],
+            "context_refs": ["task-3-brief"],
+        },
+    )
+    memory.raise_attention(
+        run_id=run_id,
+        actor_id="agent-a",
+        actor_role="agent",
+        client_update_id="console-attention-1",
+        level="yellow",
+        target="human",
+        dedupe_key="console-api",
+        reason_code="review_soon",
+        why_now="The API surface is ready for review",
+        recommended_action="Review in the next digest",
+        source_event_ids=[],
+    )
+    return run_id
+
+
+def test_api_attention_returns_readonly_board(tmp_path: Path) -> None:
+    memory = CoordinationMemory(tmp_path / "coordination.sqlite3")
+    _seed_human_attention(memory)
+    readonly = CoordinationMemory.open_readonly(tmp_path / "coordination.sqlite3")
+
+    status, ctype, body = _fetch(readonly, "/api/attention?team_id=default")
+
+    assert status == 200
+    assert ctype == "application/json; charset=utf-8"
+    assert json.loads(body)["counts"]["yellow"] == 1
+
+
+def test_api_run_brief_returns_latest_projection(tmp_path: Path) -> None:
+    memory = CoordinationMemory(tmp_path / "coordination.sqlite3")
+    run_id = _seed_human_attention(memory)
+    readonly = CoordinationMemory.open_readonly(tmp_path / "coordination.sqlite3")
+
+    status, ctype, body = _fetch(readonly, f"/api/runs/{run_id}/brief")
+
+    assert status == 200
+    assert ctype == "application/json; charset=utf-8"
+    assert json.loads(body)["run_id"] == run_id
 
 
 def _request(

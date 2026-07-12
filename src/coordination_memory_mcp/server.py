@@ -210,6 +210,56 @@ def main() -> None:
         )
 
     @mcp.tool()
+    def checkpoint_run(
+        run_id: str,
+        actor_id: str,
+        actor_role: str,
+        client_update_id: str,
+        source_event_sequence: int,
+        brief: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Refresh the latest human-facing Brief without changing run status."""
+
+        return memory.checkpoint_run(
+            run_id=run_id,
+            actor_id=actor_id,
+            actor_role=actor_role,
+            client_update_id=client_update_id,
+            source_event_sequence=source_event_sequence,
+            brief=brief,
+        )
+
+    @mcp.tool()
+    def raise_attention(
+        run_id: str,
+        actor_id: str,
+        actor_role: str,
+        client_update_id: str,
+        level: str,
+        target: str,
+        dedupe_key: str,
+        reason_code: str,
+        why_now: str,
+        recommended_action: str,
+        source_event_ids: list[str],
+    ) -> dict[str, Any]:
+        """Write non-blocking yellow or green Attention for a run."""
+
+        return memory.raise_attention(
+            run_id=run_id,
+            actor_id=actor_id,
+            actor_role=actor_role,
+            client_update_id=client_update_id,
+            level=level,
+            target=target,
+            dedupe_key=dedupe_key,
+            reason_code=reason_code,
+            why_now=why_now,
+            recommended_action=recommended_action,
+            source_event_ids=source_event_ids,
+        )
+
+    @mcp.tool()
     def record_run_binding(
         run_id: str,
         actor_id: str,
@@ -234,6 +284,7 @@ def main() -> None:
         actor_role: str,
         prompt: str,
         intervention_kind: str,
+        decision_packet: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Move an active run into a local awaiting-human lane."""
 
@@ -243,6 +294,7 @@ def main() -> None:
             actor_role=actor_role,
             prompt=prompt,
             intervention_kind=intervention_kind,
+            decision_packet=decision_packet,
         )
 
     @mcp.tool()
@@ -386,6 +438,26 @@ def main() -> None:
         """Return one run with its event timeline."""
 
         return memory.get_run_detail(run_id)
+
+    @mcp.tool()
+    def get_human_brief(run_id: str) -> dict[str, Any]:
+        """Reconstruct the latest human-facing Brief from the event ledger."""
+
+        return memory.get_human_brief(run_id)
+
+    @mcp.tool()
+    def get_attention_board(
+        team_id: str = "default",
+        target: str = "human",
+        include_green: bool = False,
+    ) -> dict[str, Any]:
+        """Reconstruct Attention for a team and target from the event ledger."""
+
+        return memory.get_attention_board(
+            team_id=team_id,
+            target=target,
+            include_green=include_green,
+        )
 
     @mcp.tool()
     def export_git_projection(output_dir: str, actor_role: str) -> dict[str, str]:

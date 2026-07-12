@@ -236,11 +236,14 @@ decision produces accepted state.
 | `cancel_assignment` / `supersede_assignment` | integrator | void / retire a task (releases any lease) |
 | `claim_assignment` | agent | claim a lease; records run/session/worktree metadata |
 | `heartbeat_run` | agent | report run liveness |
-| `request_intervention` / `respond_intervention` | agent / human | move a run to/from an awaiting-human lane |
+| `checkpoint_run` | agent | refresh the human-only latest Brief without changing run status |
+| `raise_attention` | agent | write yellow/green non-blocking Attention; green resolves a dedupe key |
+| `request_intervention` / `respond_intervention` | agent / human | use the red/blocking path, optionally with a Decision Packet, and move a run to/from an awaiting-human lane |
 | `append_event` / `submit_handoff` | agent | append evidence / submit a reviewable handoff |
 | `list_pending_reviews` | any | reviewable events with no decision yet |
 | `review_event` / `accept_event` / `reject_event` | integrator | record a review decision |
-| `get_team_board` / `get_assignment_detail` / `get_run_detail` | any | read models |
+| `get_team_board` / `get_assignment_detail` / `get_run_detail` | any | coordination read models |
+| `get_human_brief` / `get_attention_board` | any | reconstruct latest human projections from the event ledger |
 | `get_snapshot` / `export_git_projection` | integrator | accepted projection (see below) |
 
 **Acceptance contracts**
@@ -253,6 +256,23 @@ decision produces accepted state.
 Mutating tools take a `base_revision` and reject stale writes. Run/intervention
 tools only change local lanes and the event timeline; they never execute commands,
 resume threads, or touch files.
+
+### Human Brief and Attention
+
+Use `checkpoint_run` to refresh the human-only latest Brief without changing the
+run status. Use `raise_attention` for non-blocking yellow/green updates; a green
+update resolves the matching `dedupe_key`. Use `request_intervention` for the
+red/blocking path when execution must wait for a person; it may include a
+structured `decision_packet`. Read the latest ledger-derived views with
+`get_human_brief` and `get_attention_board`:
+
+```text
+get_human_brief({"run_id": "run_123"})
+get_attention_board({"team_id": "default", "target": "human", "include_green": false})
+```
+
+See [the tool reference](docs/tools.md#human-brief-and-attention) for complete
+write examples and Decision Packet semantics.
 
 ## Acceptance contracts (goal-level governance)
 
@@ -336,8 +356,9 @@ select text or the tab is hidden) live in the header, and the header shows a bui
 hash so you can tell when the UI changed. The same data is available as JSON:
 `/api/workspaces`, `/api/workspaces/<id>`, `POST /api/workspaces/<id>/archive`,
 `/api/board`, `/api/governance`, `/api/contracts` (+ `/api/contracts/<id>`),
-`/api/assignments/<id>`, `/api/runs/<id>`, `/api/teams`, `/api/reviews`,
-`/api/version`.
+`/api/assignments/<id>`, `/api/runs/<id>`, `/api/runs/<id>/brief`,
+`/api/attention` (with `team_id`, `target`, and `include_green=true|false`),
+`/api/teams`, `/api/reviews`, `/api/version`.
 
 ## Accepted projection (export)
 
