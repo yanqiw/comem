@@ -995,6 +995,8 @@ class CoordinationMemory:
             or configured_window <= 0
         ):
             configured_window = DEFAULT_FRESHNESS_WINDOW_MINUTES
+        else:
+            configured_window = min(configured_window, DEFAULT_FRESHNESS_WINDOW_MINUTES)
         payload = event["payload"]
         return {
             "run_id": run_id,
@@ -1113,12 +1115,20 @@ class CoordinationMemory:
                 (team_id,),
             ).fetchall()
             assignment_rows = conn.execute(
-                "select assignment_id, status from assignments where team_id = ?",
+                "select assignment_id, status, active_run_id from assignments where team_id = ?",
+                (team_id,),
+            ).fetchall()
+            run_rows = conn.execute(
+                "select run_id, status from runs where team_id = ?",
                 (team_id,),
             ).fetchall()
 
         resolved_ids = {row["reviewed_event_id"] for row in resolved_rows}
         assignment_statuses = {row["assignment_id"]: row["status"] for row in assignment_rows}
+        assignment_active_runs = {
+            row["assignment_id"]: row["active_run_id"] for row in assignment_rows
+        }
+        run_statuses = {row["run_id"]: row["status"] for row in run_rows}
         latest: dict[tuple[str, str], dict[str, Any]] = {}
         red_items: list[dict[str, Any]] = []
         for row in rows:
@@ -1139,6 +1149,10 @@ class CoordinationMemory:
                 }
                 continue
             if target != "human" or event["event_id"] in resolved_ids:
+                continue
+            if assignment_active_runs.get(event["assignment_id"]) != event[
+                "run_id"
+            ] or run_statuses.get(event["run_id"]) not in {"awaiting_human", "awaiting_approval"}:
                 continue
             payload = event["payload"]
             red_items.append(

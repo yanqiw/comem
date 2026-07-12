@@ -41,6 +41,16 @@ terminal runs.
 status. The `source_event_sequence` must identify an event from that run, while
 `client_update_id` makes retries idempotent:
 
+Brief freshness defaults to 30 minutes. A team's `freshness_window_minutes`
+setting may only shorten that window: positive integers are capped at 30, while
+invalid values (including booleans) fall back to 30. Age alone does not make a
+Brief stale; the window must have elapsed and a later event for the same run
+other than `human_brief_updated` must exist.
+
+Checkpoints are mandatory for `phase_changed`, `milestone_completed`,
+`plan_changed`, `decision_made`, `risk_changed`, `intervention_requested`,
+`handoff`, and `run_finished`. Team settings cannot disable these triggers.
+
 ```json
 {
   "run_id": "run_123",

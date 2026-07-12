@@ -182,6 +182,42 @@ def test_checkpoint_brief_becomes_stale_past_window_after_later_work(
     assert projection["latest_event_sequence"] == heartbeat["sequence"]
 
 
+@pytest.mark.parametrize(
+    ("configured_window", "expected_window"),
+    [
+        (1, 1),
+        (30, 30),
+        (31, 30),
+        (120, 30),
+        (0, 30),
+        (-1, 30),
+        (True, 30),
+        (False, 30),
+        (1.5, 30),
+        ("15", 30),
+        (None, 30),
+    ],
+)
+def test_team_freshness_window_can_only_shorten_default(
+    tmp_path: Path,
+    configured_window: object,
+    expected_window: int,
+) -> None:
+    memory, run = claimed_run(tmp_path)
+    memory.create_team(
+        team_id="default",
+        workspace_id="default",
+        name="Default Team",
+        owner_actor_id="integrator",
+        settings={"freshness_window_minutes": configured_window},
+    )
+    checkpoint(memory, run)
+
+    projection = memory.get_human_brief(run["run_id"])
+
+    assert projection["freshness_window_minutes"] == expected_window
+
+
 def raise_attention(
     memory: CoordinationMemory,
     run_id: str,
@@ -352,6 +388,61 @@ def test_attention_projects_open_intervention_as_red_and_response_clears_it(
         response="Retry once",
         reviewed_event_id=request["event_id"],
     )
+    assert memory.get_attention_board("default")["counts"]["red"] == 0
+
+
+def test_attention_hides_unresolved_intervention_after_lease_reclaim(
+    tmp_path: Path,
+) -> None:
+    memory, old_run = claimed_run(tmp_path)
+    request = memory.request_intervention(
+        run_id=old_run["run_id"],
+        actor_id="agent-a",
+        actor_role="agent",
+        prompt="Should the old run continue?",
+        intervention_kind="decision",
+    )
+    with sqlite3.connect(memory.db_path) as conn:
+        conn.execute(
+            "update assignments set lease_expires_at = ? where assignment_id = ?",
+            ("2000-01-01T00:00:00+00:00", "task-1"),
+        )
+
+    assignment = memory.get_assignment_detail("task-1")["assignment"]
+    reclaimed = memory.claim_assignment(
+        assignment_id="task-1",
+        actor_id="agent-b",
+        actor_role="agent",
+        base_revision=assignment["revision"],
+    )
+
+    assert reclaimed["active_run_id"] != old_run["run_id"]
+    assert memory.get_run_detail(old_run["run_id"])["status"] == "superseded"
+    assert request["event_id"] in {
+        event["event_id"] for event in memory.get_run_detail(old_run["run_id"])["events"]
+    }
+    assert memory.get_attention_board("default")["counts"]["red"] == 0
+
+
+def test_attention_hides_unresolved_intervention_after_handoff(tmp_path: Path) -> None:
+    memory, run = claimed_run(tmp_path)
+    memory.request_intervention(
+        run_id=run["run_id"],
+        actor_id="agent-a",
+        actor_role="agent",
+        prompt="Can this completed run be reviewed?",
+        intervention_kind="review",
+    )
+    assignment = memory.get_assignment_detail("task-1")["assignment"]
+    memory.submit_handoff(
+        assignment_id="task-1",
+        actor_id="agent-a",
+        actor_role="agent",
+        base_revision=assignment["revision"],
+        payload={"summary": "Implementation complete"},
+    )
+
+    assert memory.get_run_detail(run["run_id"])["status"] == "completed_gate_passed"
     assert memory.get_attention_board("default")["counts"]["red"] == 0
 
 
