@@ -21,8 +21,8 @@ describe("coordination console ui helpers", () => {
   });
 
   test("labels human attention without conflating it with lifecycle status", () => {
-    expect(attentionLabel("red")).toBe("必须现在介入");
-    expect(attentionLabel("yellow")).toBe("建议关注");
+    expect(attentionLabel("red")).toBe("Intervention required");
+    expect(attentionLabel("yellow")).toBe("Review recommended");
   });
 
   test("formats brief freshness without implying agent recovery", () => {

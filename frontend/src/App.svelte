@@ -479,12 +479,12 @@
         <div class="attention-console-head">
           <div>
             <div class="dashboard-kicker">Human Attention</div>
-            <h2 id="human-attention-title">需要人介入</h2>
+            <h2 id="human-attention-title">Needs your attention</h2>
           </div>
           <div class="attention-counts" aria-label="Attention counts">
-            <span class="attention-count critical">红 {humanAttentionCounts.red || 0}</span>
-            <span class="attention-count warn">黄 {humanAttentionCounts.yellow || 0}</span>
-            <span class="attention-count resolved">绿 {humanAttentionCounts.green || 0}</span>
+            <span class="attention-count critical">Red {humanAttentionCounts.red || 0}</span>
+            <span class="attention-count warn">Yellow {humanAttentionCounts.yellow || 0}</span>
+            <span class="attention-count resolved">Green {humanAttentionCounts.green || 0}</span>
           </div>
         </div>
         {#if humanAttentionItems.length}
@@ -505,16 +505,16 @@
                     {/if}
                   </div>
                 {/if}
-                <div class="attention-action"><span>建议动作</span> {item.recommended_action}</div>
+                <div class="attention-action"><span>Recommended action</span> {item.recommended_action}</div>
                 <div class="attention-links">
-                  <a href={"#/runs/" + encodeURIComponent(item.run_id)}>查看 Run</a>
-                  <a href={"#/assignments/" + encodeURIComponent(item.assignment_id)}>查看 Assignment</a>
+                  <a href={"#/runs/" + encodeURIComponent(item.run_id)}>View Run</a>
+                  <a href={"#/assignments/" + encodeURIComponent(item.assignment_id)}>View Assignment</a>
                 </div>
               </article>
             {/each}
           </div>
         {:else}
-          <div class="empty-state attention-empty">当前没有需要你介入的事项</div>
+          <div class="empty-state attention-empty">No items currently require your attention.</div>
         {/if}
       </section>
 
@@ -960,7 +960,7 @@
           </div>
         </section>
       {:else}
-        <div class="empty-state human-brief-empty">尚无 Human Resume Brief</div>
+        <div class="empty-state human-brief-empty">No Human Resume Brief yet.</div>
       {/if}
       <div class="section-label">Runs</div>
       {#if (assignmentDetail.runs || []).length}
@@ -1062,7 +1062,7 @@
           </div>
         </section>
       {:else}
-        <div class="empty-state human-brief-empty">尚无 Human Resume Brief</div>
+        <div class="empty-state human-brief-empty">No Human Resume Brief yet.</div>
       {/if}
       <div class="section-label">Events</div>
       {#if (runDetail.events || []).length}

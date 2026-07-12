@@ -208,7 +208,7 @@ test("renders red before yellow regardless of API item order", async () => {
   const labels = [...container.querySelectorAll(".attention-item-head strong")].map(
     (element) => element.textContent,
   );
-  expect(labels).toEqual(["必须现在介入", "建议关注"]);
+  expect(labels).toEqual(["Intervention required", "Review recommended"]);
 });
 
 test("hides green cards while retaining the green count", async () => {
@@ -228,7 +228,7 @@ test("hides green cards while retaining the green count", async () => {
   replaceRoute("#/");
 
   const { container } = render(App);
-  expect(await screen.findByText("绿 1")).toBeTruthy();
+  expect(await screen.findByText("Green 1")).toBeTruthy();
   expect(container.querySelectorAll(".attention-item")).toHaveLength(0);
   expect(screen.queryByText("Resolved item")).toBeNull();
 });
@@ -238,7 +238,7 @@ test("places Human Attention before the lifecycle board", async () => {
   replaceRoute("#/");
 
   const { container } = render(App);
-  await screen.findByText("当前没有需要你介入的事项");
+  await screen.findByText("No items currently require your attention.");
 
   const attention = container.querySelector(".attention-console");
   const lifecycle = container.querySelector(".product-board");
@@ -253,8 +253,10 @@ test("shows the exact Human Attention empty state", async () => {
 
   render(App);
 
-  expect(await screen.findByText("当前没有需要你介入的事项", { exact: true })).toBeTruthy();
-  expect(screen.getByText("绿 3")).toBeTruthy();
+  expect(
+    await screen.findByText("No items currently require your attention.", { exact: true }),
+  ).toBeTruthy();
+  expect(screen.getByText("Green 3")).toBeTruthy();
 });
 
 test.each([
@@ -286,7 +288,7 @@ test.each([
 
   render(App);
 
-  expect(await screen.findByText("尚无 Human Resume Brief", { exact: true })).toBeTruthy();
+  expect(await screen.findByText("No Human Resume Brief yet.", { exact: true })).toBeTruthy();
   expect(fetchMock).toHaveBeenCalledWith(briefPath);
 });
 

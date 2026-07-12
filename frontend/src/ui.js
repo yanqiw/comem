@@ -6,9 +6,9 @@ export function attentionSortValue(level) {
 
 export function attentionLabel(level) {
   return {
-    red: "必须现在介入",
-    yellow: "建议关注",
-    green: "已解除",
+    red: "Intervention required",
+    yellow: "Review recommended",
+    green: "Resolved",
   }[level] || statusLabel(level);
 }
 
