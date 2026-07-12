@@ -1,8 +1,10 @@
 # Tool reference
 
-Every mutating tool takes a `base_revision` and rejects stale writes. Run and
-intervention tools only change local lanes and the event timeline — they never
-execute commands, resume threads, or touch files.
+Assignment and acceptance-contract mutations take a `base_revision` and reject
+stale writes. Run-scoped agent writes enforce active-run ownership instead;
+Brief and Attention writes also use `client_update_id` for idempotency. These
+tools only change local lanes and the event timeline — they never execute
+commands, resume threads, or touch files.
 
 ## Coordination
 

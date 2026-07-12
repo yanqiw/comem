@@ -7,12 +7,12 @@
     "url": "https://github.com/yanqiw/comem",
     "source": "github"
   },
-  "version": "0.2.4",
+  "version": "0.2.6",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "coordination-memory-mcp",
-      "version": "0.2.4",
+      "version": "0.2.6",
       "transport": {
         "type": "stdio"
       }

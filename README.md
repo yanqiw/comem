@@ -33,6 +33,9 @@ things go wrong: they overwrite each other, and "I'm done" gets confused with
 - An **integrator-owned accepted projection** you review before archiving.
 - **Acceptance contracts** that make "self-certified done" structurally
   impossible for goal-level outcomes (see below).
+- A human-facing **Attention** view and latest **Resume Brief** so people can
+  re-enter long-running work without turning summaries into agent recovery
+  state or changing the coordination lifecycle.
 
 Good fits: multiple agents on separate worktrees advancing one effort; needing a
 review gate before something counts as accepted; wanting a replayable audit trail
@@ -345,15 +348,17 @@ COORDINATION_MEMORY_DB=/absolute/path/coordination.sqlite3 \
 
 ![Assignment detail in the dashboard](docs/images/dashboard-assignment.png)
 
-Open `http://127.0.0.1:8765/`. It shows a board-first **Overview** (assignment
-lanes + an Acceptance Contracts section with a stat strip and "needs attention" /
-"in flight" cards), a **Workspaces** management page with workspace and agent-team
-status counts, workspace detail pages with teams and assignments, and drill-downs for a contract (gate
-stepper, invariants, deviations, repair-loop/event timeline, bound assignments),
-an assignment, or a run — each a readable summary plus a collapsed "Raw JSON"
-panel. A team switcher and a 5s auto-refresh (overview only, paused while you
-select text or the tab is hidden) live in the header, and the header shows a build
-hash so you can tell when the UI changed. The same data is available as JSON:
+Open `http://127.0.0.1:8765/`. The **Overview** starts with Human Attention:
+red items require intervention now, yellow items are safe to digest later, and
+resolved green items stay collapsed into the count. The assignment lifecycle
+board remains directly below it. The console also includes an Acceptance
+Contracts section, a **Workspaces** management page, workspace detail pages,
+and drill-downs for a contract, assignment, or run. Assignment and run pages
+show the latest Human Resume Brief when one exists, followed by the existing
+evidence and event detail. A team switcher and a 5s auto-refresh (overview only,
+paused while you select text or the tab is hidden) live in the header, and the
+header shows a build hash so you can tell when the UI changed. The same data is
+available as JSON:
 `/api/workspaces`, `/api/workspaces/<id>`, `POST /api/workspaces/<id>/archive`,
 `/api/board`, `/api/governance`, `/api/contracts` (+ `/api/contracts/<id>`),
 `/api/assignments/<id>`, `/api/runs/<id>`, `/api/runs/<id>/brief`,

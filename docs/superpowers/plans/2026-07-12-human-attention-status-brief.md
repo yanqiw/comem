@@ -394,16 +394,16 @@ Expected: FAIL because helpers are not exported.
 
 Load `/api/attention?team_id=<selected>` alongside existing board/governance data. Render one compact section before lifecycle lanes:
 
-- red: “必须现在介入”, Decision Packet summary, link to run/assignment;
-- yellow: “建议关注”, non-blocking reason and recommended action;
+- red: “Intervention required”, Decision Packet summary, link to run/assignment;
+- yellow: “Review recommended”, non-blocking reason and recommended action;
 - green: hidden by default, represented only in counts;
-- empty state: “当前没有需要你介入的事项”.
+- empty state: “No items currently require your attention.”
 
 Do not remove or rename the lifecycle board. Do not add notification settings UI.
 
 - [ ] **Step 4: Show latest Brief on run and assignment detail routes**
 
-On a run detail route, fetch `/api/runs/<id>/brief`; render the fixed fields and `freshness`. On assignment detail, show the Brief for the active run when present. A missing Brief displays “尚无 Human Resume Brief” and does not become a red Attention item.
+On a run detail route, fetch `/api/runs/<id>/brief`; render the fixed fields and `freshness`. On assignment detail, show the Brief for the active run when present. A missing Brief displays “No Human Resume Brief yet.” and does not become a red Attention item.
 
 - [ ] **Step 5: Run frontend tests and build checked-in assets**
 

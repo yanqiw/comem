@@ -55,3 +55,47 @@ accept_contract(contract_id="c1", ...)      # independent acceptor signs off
 
 A runner bound to the contract cannot `evaluate` or `accept` it — sign-off is
 independent by construction. See [concepts](concepts.md) for the full model.
+
+## Keep a human informed without stopping the run
+
+After a meaningful run event, the owning agent can refresh the latest human
+Brief. `source_event_sequence` points back to the event the summary describes;
+the write is idempotent through `client_update_id` and does not change run
+status.
+
+```text
+checkpoint_run(
+    run_id="run_123", actor_id="builder-1", actor_role="agent",
+    client_update_id="brief-7", source_event_sequence=42,
+    brief={
+        "schema_version": 1,
+        "current_goal": "Add rate limiting",
+        "current_stage": "verifying",
+        "recent_progress": ["Load tests pass"],
+        "decisions_and_risks": ["Canary rollout still needs review"],
+        "human_intervention": {"needed": false, "blocking": false},
+        "next_steps": ["Review canary metrics"],
+        "context_refs": ["docs/rate-limit-plan.md"]
+    },
+)
+```
+
+Use yellow Attention when work can continue but a person should know. Resolve
+the same issue with a later green item using the same `dedupe_key`:
+
+```text
+raise_attention(
+    run_id="run_123", actor_id="builder-1", actor_role="agent",
+    client_update_id="attention-1", level="yellow", target="human",
+    dedupe_key="canary-review", reason_code="review_soon",
+    why_now="Canary metrics are available",
+    recommended_action="Review in the next digest", source_event_ids=[]
+)
+raise_attention(..., client_update_id="attention-2", level="green",
+                dedupe_key="canary-review", reason_code="review_complete", ...)
+```
+
+If progress cannot safely continue, call `request_intervention` instead. That
+is the red path and may include a Decision Packet. Read the current human views
+with `get_human_brief(run_id="run_123")` and
+`get_attention_board(team_id="core", target="human")`.

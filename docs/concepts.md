@@ -48,6 +48,29 @@ invariants that cannot be self-certified. Three gates:
 3. **`accept`** — only the independent acceptor signs off that the invariant set
    adequately covers the goal (green is already objective fact).
 
+## Human Resume Brief and Attention
+
+Brief and Attention are disposable human-facing projections over the same
+append-only event ledger. They do not replace assignments, runs, reviews,
+acceptance contracts, or repository Markdown.
+
+- A **Human Resume Brief** is the latest one-minute status summary for a run. It
+  records the goal, stage, recent progress, decisions and risks, intervention
+  state, next steps, and context references. It exists to help a person re-enter
+  the work; agents must recover execution context from the assignment and its
+  referenced project files.
+- **Attention** answers a separate question: does a person need to look now?
+  Red is derived from an unresolved blocking intervention on the active run.
+  Yellow is non-blocking information for the next digest. Green resolves the
+  matching yellow issue and is hidden by default.
+- Refreshing a Brief never changes run status and never creates Attention.
+  Raising yellow or green Attention never pauses execution. Only the existing
+  intervention path moves a run into `awaiting_human`.
+
+Both views are reconstructed from events. The store keeps the latest Brief per
+run and the latest Attention item per `(run_id, dedupe_key)` without adding a
+second source of truth.
+
 ## Accepted projection
 
 An integrator can export accepted state as a durable, auditable projection (for

@@ -54,7 +54,24 @@ comem dashboard --db /absolute/path/coordination.sqlite3
 Open <http://127.0.0.1:8765/>. Read APIs are read-only; the only write action is
 **Archive workspace**, a local soft status update.
 
+The dashboard starts with **Human Attention** before the assignment lifecycle
+board. Red means an active run is blocked on a person, yellow can wait for the
+next digest, and green is resolved and collapsed by default. Open an assignment
+or run to see its latest Human Resume Brief.
+
+For agent-authored updates, use:
+
+```text
+checkpoint_run(...)       # refresh the human Brief; does not change run status
+raise_attention(...)      # yellow/green, non-blocking
+request_intervention(...) # red, blocking, may include a Decision Packet
+```
+
+Read the projections with `get_human_brief` and `get_attention_board`. See the
+[worked example](examples.md#keep-a-human-informed-without-stopping-the-run).
+
 ## Next
 
 - Understand the model: [Concepts & governance](concepts.md).
 - See it end-to-end: [Examples](examples.md).
+- Look up exact fields and defaults: [Tool reference](tools.md#human-brief-and-attention).

@@ -5,17 +5,18 @@ This checklist captures the week-one launch work for Coordination Memory MCP.
 ## Current Public State
 
 - GitHub repository: `https://github.com/yanqiw/comem`
-- Current package version in `pyproject.toml`: `0.2.4`
-- Public GitHub description observed through the API: `Agent Team coordination memory`
-- Public GitHub topics observed through the API: none
-- Public GitHub Discussions observed through the API: disabled
-- Public GitHub releases/tags observed through the API: none
-- PyPI package `coordination-memory-mcp`: not found at the JSON endpoint before
-  release
+- Current package version in `pyproject.toml`: `0.2.6`
+- Public PyPI version: `0.2.4`; `0.2.6` is not published yet
+- Public GitHub description: `Local MCP coordination layer for multi-agent coding: task leases, auditable handoffs, independent acceptance contracts.`
+- Public GitHub topics: `agent-orchestration`, `ai-agents`, `developer-tools`,
+  `governance`, `local-first`, `mcp`, `model-context-protocol`, `multi-agent`,
+  `sqlite`
+- Public GitHub Discussions: enabled
+- Public GitHub releases: none
+- PyPI package `coordination-memory-mcp`: published at `0.2.4`
 - PyPI pending Trusted Publisher: configured by the project owner for GitHub
   Actions release workflow
-- Local GitHub CLI auth: invalid token; authenticated repository settings and
-  release actions require owner re-authentication
+- Local GitHub CLI auth can read repository metadata
 - `mcp-publisher`: not installed locally
 
 ## Repository Settings
@@ -36,24 +37,24 @@ Set these in GitHub before announcing broadly:
 
 ## Release Path
 
-1. Re-authenticate GitHub CLI or use the GitHub UI with owner permissions.
-2. Configure PyPI Trusted Publishing for:
+1. Confirm GitHub CLI still has write access before tagging the release.
+2. Confirm PyPI Trusted Publishing for:
    - PyPI project: `coordination-memory-mcp`
    - Repository: `yanqiw/comem`
    - Workflow: `.github/workflows/release.yml`
    - Environment: `pypi`
    - Status: configured
 3. Ensure the release commit includes:
-   - `pyproject.toml` version `0.2.4`
-   - `CHANGELOG.md` release section `0.2.4`
+   - `pyproject.toml` version `0.2.6`
+   - `CHANGELOG.md` release section `0.2.6`
    - README install instructions
    - README MCP Registry marker: `mcp-name: io.github.yanqiw/comem`
    - `server.json`
 4. Tag and push:
 
 ```bash
-git tag v0.2.4
-git push origin v0.2.4
+git tag v0.2.6
+git push origin v0.2.6
 ```
 
 5. Wait for the Release workflow to publish to PyPI.

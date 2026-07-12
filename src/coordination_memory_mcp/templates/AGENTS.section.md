@@ -26,11 +26,34 @@ your own work as done.
 3. `record_run_binding` — keep session/thread/worktree communication metadata
    current when a loop or adapter starts or resumes an agent conversation.
 4. `heartbeat_run` — report liveness on long runs.
-5. `append_event` / `submit_handoff` — append evidence; submit a reviewable
+5. `checkpoint_run` — refresh the Human Resume Brief after a meaningful change.
+6. `raise_attention` — write yellow/green human Attention without pausing work;
+   use `request_intervention` only for the red/blocking path.
+7. `append_event` / `submit_handoff` — append evidence; submit a reviewable
    handoff when you believe the work is complete.
-6. Integrator: `list_pending_reviews`, then `review_event` / `accept_event` /
+8. Integrator: `list_pending_reviews`, then `review_event` / `accept_event` /
    `reject_event`.
-7. Read models: `get_team_board`, `get_assignment_detail`, `get_run_detail`.
+9. Read models: `get_team_board`, `get_assignment_detail`, `get_run_detail`,
+   `get_human_brief`, `get_attention_board`.
+
+### Human status and attention
+
+Human Resume Brief is a one-minute status view for a person. Keep it current
+after phase changes, milestones, plan or decision changes, risk changes,
+interventions, handoffs, and run completion. It does not restore agent execution
+context; recover that from the assignment and `metadata.context_refs`.
+
+Decide Attention independently from Brief freshness:
+
+- Red: work cannot safely continue without a person. Use
+  `request_intervention`; include a Decision Packet when a choice is needed.
+- Yellow: work continues, but a person should review the item in the next
+  digest. Use `raise_attention` with a stable `dedupe_key`.
+- Green: the matching issue is resolved. Use `raise_attention` with the same
+  `dedupe_key`; green is hidden from the default board but remains counted.
+
+Refreshing a Brief never creates Attention, and yellow/green Attention never
+changes assignment or run status.
 
 ### Execution mode selection
 
@@ -140,12 +163,13 @@ not force.
 
 - Setup: `register_actor`, `register_workspace`, `create_team`.
 - Work (agent): `claim_assignment`, `record_run_binding`, `heartbeat_run`,
-  `append_event`, `submit_handoff`, `request_intervention`.
+  `checkpoint_run`, `raise_attention`, `append_event`, `submit_handoff`,
+  `request_intervention`.
 - Review (integrator): `create_assignment`, `cancel_assignment`,
   `supersede_assignment`, `list_pending_reviews`, `review_event`,
   `accept_event`, `reject_event`, `respond_intervention`.
 - Read models (any role): `get_team_board`, `get_assignment_detail`,
-  `get_run_detail`, `get_snapshot`.
+  `get_run_detail`, `get_human_brief`, `get_attention_board`, `get_snapshot`.
 - Acceptance contracts: `create_acceptance_contract`, `add_invariant`,
   `bind_assignment_to_contract`, `seal_contract`, `report_verification`,
   `evaluate_contract`, `accept_contract`, `reject_contract`, `raise_deviation`,

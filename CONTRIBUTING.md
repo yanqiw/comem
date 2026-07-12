@@ -42,8 +42,7 @@ When you change the dashboard source, also run the frontend checks if you have
 Node available:
 
 ```bash
-npm test
-npm run build
+npm run check
 node --check src/coordination_memory_mcp/static/app.js
 ```
 
@@ -83,6 +82,10 @@ them will be rejected:
   Enforcement must be in the store layer so it cannot be bypassed.
 - **Optimistic concurrency.** Every mutating assignment/contract write carries a
   `base_revision` and bumps the revision; append-only probe results do not.
+- **Human projections do not become workflow state.** `checkpoint_run` never
+  changes assignment/run status or creates Attention. Yellow/green Attention is
+  non-blocking; red is derived only from an unresolved intervention on the
+  active run. Resume Briefs are for people, not agent execution recovery.
 
 ## Pull requests
 
