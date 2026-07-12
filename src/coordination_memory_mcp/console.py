@@ -161,7 +161,16 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         if parsed.path == "/api/attention":
             team_id = query.get("team_id", ["default"])[0] or "default"
             target = query.get("target", ["human"])[0] or "human"
-            include_green = query.get("include_green", ["false"])[0].lower() == "true"
+            include_green_values = parse_qs(
+                parsed.query,
+                keep_blank_values=True,
+            ).get("include_green")
+            include_green_value = (
+                include_green_values[0].lower() if include_green_values else "false"
+            )
+            if include_green_value not in {"true", "false"}:
+                raise CoordinationMemoryError("include_green must be true or false")
+            include_green = include_green_value == "true"
             self._send_json(
                 self._memory().get_attention_board(
                     team_id=team_id,

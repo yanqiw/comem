@@ -173,13 +173,19 @@ def _fetch(memory: CoordinationMemory, path: str) -> tuple[int, str, str]:
     return _request(memory, path)
 
 
-def _seed_human_attention(memory: CoordinationMemory) -> str:
+def _seed_human_attention(
+    memory: CoordinationMemory,
+    *,
+    team_id: str = "default",
+    target: str = "human",
+) -> str:
     assignment = memory.create_assignment(
         assignment_id="human-attention-console-task",
         title="Human Attention Console Task",
         actor_id="integrator",
         actor_role="integrator",
         base_revision=0,
+        team_id=team_id,
     )
     claimed = memory.claim_assignment(
         assignment_id=assignment["assignment_id"],
@@ -212,7 +218,7 @@ def _seed_human_attention(memory: CoordinationMemory) -> str:
         actor_role="agent",
         client_update_id="console-attention-1",
         level="yellow",
-        target="human",
+        target=target,
         dedupe_key="console-api",
         reason_code="review_soon",
         why_now="The API surface is ready for review",
@@ -232,6 +238,70 @@ def test_api_attention_returns_readonly_board(tmp_path: Path) -> None:
     assert status == 200
     assert ctype == "application/json; charset=utf-8"
     assert json.loads(body)["counts"]["yellow"] == 1
+
+
+def test_api_attention_accepts_explicit_booleans_and_forwards_filters(
+    tmp_path: Path,
+) -> None:
+    memory = CoordinationMemory(tmp_path / "coordination.sqlite3")
+    memory.create_team(
+        team_id="attention-team",
+        workspace_id="default",
+        name="Attention Team",
+        owner_actor_id="integrator",
+    )
+    run_id = _seed_human_attention(
+        memory,
+        team_id="attention-team",
+        target="integrator",
+    )
+    memory.raise_attention(
+        run_id=run_id,
+        actor_id="agent-a",
+        actor_role="agent",
+        client_update_id="console-attention-2",
+        level="green",
+        target="integrator",
+        dedupe_key="console-api",
+        reason_code="review_complete",
+        why_now="The API review is complete",
+        recommended_action="No action required",
+        source_event_ids=[],
+    )
+    readonly = CoordinationMemory.open_readonly(tmp_path / "coordination.sqlite3")
+
+    status, _, body = _fetch(
+        readonly,
+        "/api/attention?team_id=attention-team&target=integrator&include_green=false",
+    )
+    hidden = json.loads(body)
+    assert status == 200
+    assert hidden["team_id"] == "attention-team"
+    assert hidden["target"] == "integrator"
+    assert hidden["counts"]["green"] == 1
+    assert hidden["items"] == []
+
+    status, _, body = _fetch(
+        readonly,
+        "/api/attention?team_id=attention-team&target=integrator&include_green=TrUe",
+    )
+    visible = json.loads(body)
+    assert status == 200
+    assert visible["items"][0]["level"] == "green"
+
+
+def test_api_attention_rejects_invalid_include_green(tmp_path: Path) -> None:
+    CoordinationMemory(tmp_path / "coordination.sqlite3")
+    readonly = CoordinationMemory.open_readonly(tmp_path / "coordination.sqlite3")
+
+    status, ctype, body = _fetch(
+        readonly,
+        "/api/attention?include_green=not-a-bool",
+    )
+
+    assert status == 400
+    assert ctype == "application/json; charset=utf-8"
+    assert "include_green must be true or false" in json.loads(body)["error"]
 
 
 def test_api_run_brief_returns_latest_projection(tmp_path: Path) -> None:
