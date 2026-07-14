@@ -42,7 +42,7 @@ comem init --tools claude  # just the Claude Code skill
 ```
 
 This writes a canonical protocol section into `AGENTS.md` (idempotently) plus
-per-tool adapters. See the [Set up your agent](../README.md#set-up-your-agent)
+per-tool adapters. See [Set up your agent](https://github.com/yanqiw/comem#set-up-your-agent)
 table for what lands where.
 
 ## 5. Open the dashboard

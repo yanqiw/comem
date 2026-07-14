@@ -22,5 +22,5 @@
     — append-only projection design, compatibility constraints, and acceptance
     checks for the shipped human-facing views.
 
-For project background and security boundaries, see the top-level
-[README](../README.md).
+For project background and security boundaries, see the
+[repository README](https://github.com/yanqiw/comem#readme).
